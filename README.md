@@ -1,0 +1,1 @@
+This set of scripts is designed to train and test classifiers for images of phytoplankton from the Imaging FlowCytobot (IFCB). It is written by Karin Garefelt in the Environmental Genomics group at Science For Life Laboratory/KTH, with inspiration from Kaisa Kraft et al. Front. Mar. Sci. (2022).
