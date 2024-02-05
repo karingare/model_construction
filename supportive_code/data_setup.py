@@ -9,6 +9,8 @@ Contains functions for creating dataloaders
 """
 
 import os
+from torch.utils.data import ConcatDataset
+from sklearn.model_selection import train_test_split
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
@@ -26,7 +28,8 @@ def find_classes(dir):
     return classes, class_to_idx
 
 def create_dataloaders(
-    split_data_path: Path,
+    data_path: Path,
+    unclassifiable_path: Path,
     transform: transforms.Compose, 
     simple_transform: transforms.Compose,
     batch_size: int
@@ -56,23 +59,30 @@ def create_dataloaders(
     """
 
 
-	# dataset creation with ImageFolder
-    train_path = split_data_path / "train"
-    val_path = split_data_path / "val"
-    val_with_unclassifiable_path = split_data_path / "valWithUnclassifiable"
-    test_path = split_data_path / "test"
-    test_with_unclassifiable_path = split_data_path / "testWithUnclassifiable"
 
-    train_dataset = datasets.ImageFolder(root=train_path, transform=transform)
-    val_dataset = datasets.ImageFolder(root=val_path, transform=simple_transform)
-    val_with_unclassifiable_dataset = datasets.ImageFolder(root=val_with_unclassifiable_path, transform=simple_transform)
-    test_dataset = datasets.ImageFolder(root=test_path, transform=simple_transform)
-    test_with_unclassifiable_dataset = datasets.ImageFolder(root=test_with_unclassifiable_path, transform=simple_transform)
 
-    # create sampler for the train dataset
+    # Load the dataset
+    full_dataset = datasets.ImageFolder(data_path, transform=transform)
+    unclassifiable_dataset = datasets.ImageFolder(unclassifiable_path, transform=transform)
+
+
+    # Split the dataset into training and test sets
+    train_dataset, test_dataset = train_test_split(full_dataset, test_size=0.2, random_state=42)
+
+    # Split the training set into training and validation sets
+    train_dataset, val_dataset = train_test_split(train_dataset, test_size=0.25, random_state=42)
+
+    test_with_unclassifiable_dataset = ConcatDataset([test_dataset, unclassifiable_dataset])
+    val_with_unclassifiable_dataset = ConcatDataset([val_dataset, unclassifiable_dataset])
+
+    # to do:
+    # add transforms so they are different for training and testing
+    # make it use different unclassfiable images, and the right number
+
+
     RandSampler = RandomSampler(train_dataset, replacement=False, num_samples=None, generator=None)
 
-	# define dataloaders
+	  # define dataloaders
     num_workers = 32 # this fits with berzelius
     train_dataloader = DataLoader(dataset=train_dataset, 
                                      batch_size=batch_size, 
@@ -82,6 +92,9 @@ def create_dataloaders(
 		                             batch_size=batch_size, 
 		                             num_workers=num_workers, 
 		                             shuffle=False) # don't usually need to shuffle testing data
+    
+
+
     val_with_unclassifiable_dataloader = DataLoader(dataset=val_with_unclassifiable_dataset,
 		                             batch_size=batch_size, 
 		                             num_workers=num_workers, 
@@ -95,7 +108,7 @@ def create_dataloaders(
 		                             num_workers=num_workers, 
 		                             shuffle=False) 
 
-    classes, class_to_idx = find_classes(train_path)
+    classes, class_to_idx = find_classes(data_path)
 
 
     return train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, classes, class_to_idx
