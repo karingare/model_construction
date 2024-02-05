@@ -39,12 +39,13 @@ if __name__ == "__main__":
     # change this to a github related reference
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='all')
+    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
     parser.add_argument('--num_epochs', type=int, help='Specify data selection (test or all)', default=20)
 
 
     if parser.parse_args().data == "test":
-        split_data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/split_datasets/development/"
+        data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development"
+        unclassifiable_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development_unclassifiable"
     elif parser.parse_args().data == "all":
         split_data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/split_datasets/combined_datasets/"
 
@@ -74,7 +75,8 @@ if __name__ == "__main__":
 
     # create dataloaders
     train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
-        split_data_path = split_data_path,
+        data_path = data_path,
+        unclassifiable_path = unclassifiable_path,
         transform = train_transform,
         simple_transform = simple_transform,
         batch_size = BATCH_SIZE
