@@ -11,11 +11,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # decides how much info to show from te
 from torchvision import models, transforms, datasets
 import torch
 from torch import nn
-from torchinfo import summary
 from pathlib import Path
 import argparse
-from supportive_code.prediction_setup import create_predict_dataloader, predict_to_csvs, find_best_thresholds, evaluate_on_test
-from supportive_code.helper import show_model, create_confusion_matrix
+from supportive_code.prediction_setup import create_predict_dataloader, evaluate_on_test
 import ast
 import pandas as pd
 from supportive_code.padding import NewPad
@@ -27,15 +25,21 @@ if __name__ == "__main__":
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
     figures_path =  base_dir / 'out'
 
-    data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets' / 'testWithUnclassifiable'
-
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='main')
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='development')
+    parser.add_argument('--testtype', type=str, help='Specify the type of test data to use (fraction of full set or separate set)', default='fraction')
+    parser.add_argument('--data', type=str, help='Specify any specific dataset to use', default='development')
 
     if parser.parse_args().model == "main":
         path_to_model = base_dir / 'data' / 'model_main_240116.pth'
+    elif parser.parse_args().model == "development":
+        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
     else:
         path_to_model = base_dir / 'data' / parser.parse_args().model
+
+    if parser.parse_args().data == "development":
+        data_path = base_dir / 'data' / 'development'
+        unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
 
     # set batch size for the dataloader
     batch_size = 32
@@ -57,6 +61,7 @@ if __name__ == "__main__":
         nn.Linear(256, 128),
         nn.Linear(128, num_classes)
     ) 
+     
     model.load_state_dict(torch.load(path_to_model))
     model.to(device)
     model.eval() # enabling the eval mode to test with new samples
@@ -70,17 +75,25 @@ if __name__ == "__main__":
 
     # create dataset and dataloader for the data to be predicted on
     dataset = datasets.ImageFolder(root=data_path, transform=transform)
-    data_loader = create_predict_dataloader(data_path = data_path, transform = transform, batch_size = batch_size, dataset = dataset)
 
+    if parser.parse_args().testtype == "fraction":
+        _, _, _, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
+            data_path = data_path,
+            unclassifiable_path = unclassifiable_path,
+            transform = transform,
+            simple_transform = transform,
+            batch_size = batch_size)
+    elif parser.parse_args().testtype == "separate":
+        test_dataloader = create_predict_dataloader(data_path = data_path, transform = transform, batch_size = batch_size, dataset = dataset)
 
     # read the thresholds
     thresholds = pd.read_csv(base_dir / 'out' / 'thresholds.csv')['Threshold']
 
     # call the evaluation function
-    eval_df = evaluate_on_test(model, data_loader, class_names, thresholds)
+    eval_df = evaluate_on_test(model, test_dataloader, class_names, thresholds)
 
-    print(type(eval_df))
     print(eval_df)
+    
     # write the newly created files
     eval_df.to_csv(base_dir / 'out' / 'test_set_metrics.csv', index=True) #flag
 
