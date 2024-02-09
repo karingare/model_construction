@@ -28,8 +28,8 @@ if __name__ == "__main__":
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='all')
-    parser.add_argument('--model', type=str, help='Specify model (main or a name)', default='main')
+    parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='march2023')
+    parser.add_argument('--model', type=str, help='Specify model (main or a name)', default='development')
 
     if parser.parse_args().data == "march2023":
         data_path = base_dir / 'data' / 'ifcb_png_march_2023'
@@ -40,13 +40,15 @@ if __name__ == "__main__":
 
     if parser.parse_args().model == "main":
         path_to_model = base_dir / 'data' / 'model_main_240116.pth'
+    if parser.parse_args().model == "development":
+        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
     else:
         path_to_model = base_dir / 'data' / parser.parse_args().model
 
     figures_path = base_dir / 'out' 
     
     # set batch size for the dataloader
-    batch_size = 6
+    batch_size = 32
 
     # read dictionary of class names and indexes
     with open(base_dir / 'model_construction' / 'supportive_files'/'class_to_idx.txt') as f:
@@ -67,15 +69,6 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(path_to_model))
     model.to(device)
     model.eval() # enabling the eval mode to test with new samples.
-
-    
-    # summary(model=model, 
-    #         input_size=(1, 3, 180, 180), # make sure this is "input_size", not "input_shape"
-    #         # col_names=["input_size"], # uncomment for smaller output
-    #         col_names=["input_size", "output_size", "num_params", "trainable"],
-    #         col_width=20,
-    #         row_settings=["var_names"]
-    # )
 
 
     transform = transforms.Compose([
