@@ -139,7 +139,7 @@ if __name__ == "__main__":
     print(f"[INFO] Total training time: {end_time-start_time:.3f} seconds")
 
     # evaluate with validation_set
-    validation_metrics = evaluate(model_0, val_dataloader, class_names)
+    validation_metrics = evaluate(model_0, val_dataloader, class_names, figures_path)
 
     #plot loss curves
     plot_loss_curves(model_0_results, figures_path = figures_path)

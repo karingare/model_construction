@@ -211,7 +211,7 @@ def create_confusion_matrix(model, test_dataloader, num_classes, class_names, fi
     plt.savefig(full_path)
 
 
-def evaluate(model, dataloader, class_names):
+def evaluate(model, dataloader, class_names, figures_path):
     model.eval()
     all_predictions = []
     all_targets = []
@@ -234,5 +234,5 @@ def evaluate(model, dataloader, class_names):
     df.set_index("Class", inplace=True)
     df.index.name = None
     df.columns.name = None
-    df.to_csv("out/metrics.csv")
+    df.to_csv(figures_path / "validation_metrics.csv")
     return df
