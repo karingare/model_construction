@@ -185,7 +185,6 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
     recall_scores = []
     precision_scores = []
 
-
     with torch.no_grad():
         for inputs, labels in dataloader:
             inputs = inputs.to(device)
@@ -199,7 +198,6 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
     tensor_labels = torch.stack(all_labels)
 
     for i in tqdm(range(num_classes)):
-        print(f"{i} of {num_classes}")
         true_positives = 0
         false_positives = 0
         false_negatives = 0
@@ -222,7 +220,6 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
 
     df = pd.DataFrame({'Precision': precision_scores, 'Recall':recall_scores, 'F1': f1_scores})
     df.index = class_names
-    print(df)
     return df
 
 
