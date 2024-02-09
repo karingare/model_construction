@@ -29,17 +29,20 @@ if __name__ == "__main__":
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='all')
-    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='main')
+    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='development')
 
 
     if parser.parse_args().data == "test":
-        split_data_path =base_dir / 'data' / 'split_datasets' / 'development'
+        data_path = base_dir / 'data' /'development'
+        unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
     elif parser.parse_args().data == "all":
-        split_data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
+        data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
 
     if parser.parse_args().model == "main":
         path_to_model = base_dir / 'data' / 'model_main_240116.pth'
+    elif parser.parse_args().model == "development":
+        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
     else:
         path_to_model = base_dir / 'data' / parser.parse_args().model
 
@@ -61,9 +64,12 @@ if __name__ == "__main__":
             transforms.ToTensor(),
         ])
     
+
+
     # create dataset and dataloader for the valid dataset
     train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
-        split_data_path = split_data_path,
+        data_path = data_path,
+        unclassifiable_path = unclassifiable_path,
         transform = train_transform,
         simple_transform = simple_transform,
         batch_size = batch_size
@@ -80,6 +86,7 @@ if __name__ == "__main__":
         nn.Linear(256, 128),
         nn.Linear(128, num_classes)
     ) 
+    
     model.load_state_dict(torch.load(path_to_model)) # This line uses .load() to read a .pth file and load the network weights on to the architecture.
     model.to(device)
     model.eval() # enabling the eval mode to test with new samples.
