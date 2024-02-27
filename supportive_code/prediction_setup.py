@@ -26,6 +26,10 @@ def find_best_thresholds(model, dataloader, class_names, figures_path):
     num_classes = len(class_names)
     probabilities = []
     all_labels = []
+
+    thresholds_path = figures_path / 'threshold_graphs' 
+    thresholds_path.mkdir(parents=True, exist_ok=True)
+
     with torch.no_grad():
         for inputs, labels in dataloader:
             inputs = inputs.to(device)
@@ -81,7 +85,8 @@ def find_best_thresholds(model, dataloader, class_names, figures_path):
         ax.plot(np.arange(1.0, 0.0, -0.001), recall_for_plot)
         plt.xlabel('Threshold')
         plt.ylabel('Metric')
-        fig_path = figures_path / 'threshold_graphs' / f'{class_names[i]}.png'
+        fig_path = thresholds_path / f'{class_names[i]}.png'
+
         plt.legend([f'F1 Score for {class_names[i]}', f'Precision for {class_names[i]}', f'Recall for {class_names[i]}'])
         plt.savefig(fig_path, bbox_inches='tight')
         plt.close()
@@ -113,9 +118,9 @@ def create_predict_dataloader(
     return predict_dataloader
 
 
-def predict_to_csvs(model, data_loader, dataset, idx_to_class):
+def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
     predictions = []
-    threshold_df = pd.read_csv("/proj/berzelius-2023-48/ifcb/main_folder_karin/out/thresholds.csv", index_col=0)
+    threshold_df = pd.read_csv(thresholds_path, index_col=0)
 
     # 1. Predict on images in dataloader
     for images, labels in tqdm(data_loader):

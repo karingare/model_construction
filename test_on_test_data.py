@@ -26,26 +26,33 @@ if __name__ == "__main__":
     figures_path =  base_dir / 'out'
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='development')
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='test')
     parser.add_argument('--testtype', type=str, help='Specify the type of test data to use (fraction of full set or separate set)', default='fraction')
     parser.add_argument('--data', type=str, help='Specify any specific dataset to use', default='development')
 
+    
     if parser.parse_args().model == "main":
-        path_to_model = base_dir / 'data' / 'model_main_240116.pth'
+        model_path = base_dir / 'data' / 'models' /'model_main_240116' 
     elif parser.parse_args().model == "development":
-        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
+        model_path = base_dir / 'data' / 'models' / 'development_20240209' 
+    elif parser.parse_args().model == "syke2022":
+        model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
     else:
-        path_to_model = base_dir / 'data' / parser.parse_args().model
+        model_path = base_dir / 'data' / 'models' / parser.parse_args().model 
 
     if parser.parse_args().data == "development":
         data_path = base_dir / 'data' / 'development'
         unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
+    elif parser.parse_args().data == "syke2022":
+        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
+    path_to_model = model_path / 'model.pth'
     # set batch size for the dataloader
     batch_size = 32
 
     # read dictionary of class names and indexes
-    with open(base_dir / 'model_construction' / 'supportive_files' / 'class_to_idx.txt') as f:
+    with open(model_path / 'class_to_idx.txt') as f:
         data = f.read()
 
     class_to_idx = ast.literal_eval(data)
@@ -87,7 +94,7 @@ if __name__ == "__main__":
         test_dataloader = create_predict_dataloader(data_path = data_path, transform = transform, batch_size = batch_size, dataset = dataset)
 
     # read the thresholds
-    thresholds = pd.read_csv(base_dir / 'out' / 'thresholds.csv')['Threshold']
+    thresholds = pd.read_csv(model_path / 'thresholds.csv')['Threshold']
 
     # call the evaluation function
     eval_df = evaluate_on_test(model, test_dataloader, class_names, thresholds)

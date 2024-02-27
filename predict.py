@@ -39,19 +39,29 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'ifcb_png_march_2023'
 
     if parser.parse_args().model == "main":
-        path_to_model = base_dir / 'data' / 'model_main_240116.pth'
-    if parser.parse_args().model == "development":
-        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
+        model_path = base_dir / 'data' / 'models' /'main_20240116'
+        path_to_model = model_path / 'model.pth'
+    elif parser.parse_args().model == "development":
+        model_path = base_dir / 'data' / 'models' / 'development_20240209'
+        path_to_model = model_path / 'model.pth'
+    elif parser.parse_args().model == "syke2022":
+        model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
+        path_to_model = model_path / 'model.pth'
     else:
-        path_to_model = base_dir / 'data' / parser.parse_args().model
+        model_path = base_dir / 'data' / 'models' / parser.parse_args().model
+        path_to_model = model_path / 'model.pth'
+    
 
-    figures_path = base_dir / 'out' 
+    figures_path = model_path / 'predictions' 
+    figures_path.mkdir(parents=True, exist_ok=True)
+
+    thresholds_path = model_path / 'thresholds.csv'
     
     # set batch size for the dataloader
     batch_size = 32
 
     # read dictionary of class names and indexes
-    with open(base_dir / 'model_construction' / 'supportive_files'/'class_to_idx.txt') as f:
+    with open(model_path /'class_to_idx.txt') as f:
         data = f.read()
     class_to_idx = ast.literal_eval(data)
     idx_to_class = {v: k for k, v in class_to_idx.items()}
@@ -86,7 +96,7 @@ if __name__ == "__main__":
     show_model(model= model, dataloader = new_data_loader, class_names = class_names, figures_path = figures_path)
     
     # Make real predictions that will be summarized in csv files
-    df_of_predictions, summarized_predictions, summarized_predictions_per_class = predict_to_csvs(model = model, data_loader =new_data_loader, dataset=dataset, idx_to_class=idx_to_class)
+    df_of_predictions, summarized_predictions, summarized_predictions_per_class = predict_to_csvs(model = model, data_loader = new_data_loader, dataset=dataset, idx_to_class=idx_to_class, thresholds_path = thresholds_path)
 
     # write the newly created files
     df_of_predictions.to_csv(figures_path / 'individual_image_predictions.csv', index = False) #flag
