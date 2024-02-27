@@ -32,6 +32,25 @@ if __name__ == "__main__":
 
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
 
+
+    parser = argparse.ArgumentParser(description='My script description')
+    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='all')
+    parser.add_argument('--num_epochs', type=int, help='Specify data selection (test or all)', default=20)
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='main')
+    parser.add_argument('--renew', type=str, help='Specify if features should be extracted from start (yes or no)', default='no')
+    parser.add_argument('--samplingtype', type=str, help='Specify how subsampling should be done (random10, bytaxa, none)', default='bytaxa')
+    parser.add_argument('--taxa', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='diatoms')
+    parser.add_argument('--pcoaandtsne', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='yes')
+
+    args = parser.parse_args()
+
+    if parser.parse_args().data == "test":
+        data_path = base_dir / 'data' / 'development'
+        unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
+    elif parser.parse_args().data == "all":
+        data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
+        # wrong - should not be split datasets but a combined one
+    
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     with open(base_dir / 'model_construction' / 'supportive_files' / 'class_to_idx.txt') as f:
@@ -45,7 +64,10 @@ if __name__ == "__main__":
 
 
     # import the model
-    path_to_model = base_dir / 'data' / 'model_main_240116.pth' 
+    if parser.parse_args().model == "main":
+        path_to_model = base_dir / 'data' / 'model_main_240116.pth'
+    elif parser.parse_args().model == "test":
+        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
     model = models.resnet18()
     num_ftrs = model.fc.in_features
     model.fc = nn.Sequential(
@@ -60,21 +82,6 @@ if __name__ == "__main__":
 
     padding = True # controls padding of images
 
-
-    parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='all')
-    parser.add_argument('--renew', type=str, help='Specify if features should be extracted from start (yes or no)', default='no')
-    parser.add_argument('--samplingtype', type=str, help='Specify how subsampling should be done (random10, bytaxa, none)', default='bytaxa')
-    parser.add_argument('--taxa', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='diatoms')
-    parser.add_argument('--pcoaandtsne', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='yes')
-
-    args = parser.parse_args()
-
-    if args.data == 'all':
-        split_data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
-    elif args.data == 'test':
-        split_data_path = base_dir / 'data' / 'split_datasets' / 'development'
-
     # selection of data to load
     BATCH_SIZE = 32
 
@@ -86,8 +93,9 @@ if __name__ == "__main__":
         ])
 
     _, dataloader1, _, dataloader2, _, class_names, class_to_idx = create_dataloaders( 
-        split_data_path = split_data_path,
+        data_path = data_path,
         transform = simple_transform,
+        unclassifiable_path=unclassifiable_path,
         simple_transform = simple_transform,
         batch_size = BATCH_SIZE
     )

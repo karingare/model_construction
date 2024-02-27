@@ -8,6 +8,7 @@ Created on Fri Mar  3 15:46:58 2023
 
 # other things
 import warnings
+from random import sample 
 warnings.filterwarnings('always')  # "error", "ignore", "always", "default", "module" or "once"
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "all":
         split_data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/split_datasets/combined_datasets/"
 
-    
+    print(f"[INFO] Using {parser.parse_args().data} data")
 
     model_save_path = base_dir / 'data'
     figures_path = base_dir / 'out'
@@ -83,6 +84,8 @@ if __name__ == "__main__":
     )
     
     num_classes = len(class_names)
+
+    print(f"[INFO] There are {num_classes} classes in the dataset. They include {sample(class_names,1 )}, {sample(class_names,1)} and {sample(class_names,1)}.")
     
     # save class to idx so it can be accessed by the predict script
     f = open(base_dir / 'model_construction' / 'supportive_files' / 'class_to_idx.txt',"w")
@@ -136,6 +139,8 @@ if __name__ == "__main__":
 
     # End the timer and print out how long it took
     end_time = timer()
+    print(f"[INFO] Training complete.")
+
     print(f"[INFO] Total training time: {end_time-start_time:.3f} seconds")
 
     # evaluate with validation_set
