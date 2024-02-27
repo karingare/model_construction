@@ -37,7 +37,6 @@ if __name__ == "__main__":
     
     # setting up paths
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
-    # change this to a github related reference
 
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
@@ -47,13 +46,23 @@ if __name__ == "__main__":
     if parser.parse_args().data == "test":
         data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development"
         unclassifiable_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development_unclassifiable"
-    elif parser.parse_args().data == "all":
-        split_data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/split_datasets/combined_datasets/"
+    elif parser.parse_args().data == "syke2022":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2022/labeled_20201020'
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
-    print(f"[INFO] Using {parser.parse_args().data} data")
+    print(f"[INFO] Using data from {data_path} ")
 
-    model_save_path = base_dir / 'data'
-    figures_path = base_dir / 'out'
+
+    # Get the current date and time
+    now = datetime.now()
+    now_str = now.strftime("%Y%m%d_%H%M%S")
+
+    model_save_path = base_dir / 'data' / 'models' / f"model_{now_str}"
+    model_save_path.mkdir(parents=True, exist_ok=True)
+
+    figures_path = model_save_path / 'figures'
+    figures_path.mkdir(parents=True, exist_ok=True)
+
     padding = True
 
     BATCH_SIZE = 32
@@ -87,8 +96,8 @@ if __name__ == "__main__":
 
     print(f"[INFO] There are {num_classes} classes in the dataset. They include {sample(class_names,1 )}, {sample(class_names,1)} and {sample(class_names,1)}.")
     
-    # save class to idx so it can be accessed by the predict script
-    f = open(base_dir / 'model_construction' / 'supportive_files' / 'class_to_idx.txt',"w")
+    # save class to idx so it can be accessed by other scripts
+    f = open(model_save_path / 'class_to_idx.txt' ,"w")
     f.write( str(class_to_idx) )
     f.close()
     idx_to_class = {v: k for k, v in class_to_idx.items()}
@@ -149,17 +158,32 @@ if __name__ == "__main__":
     #plot loss curves
     plot_loss_curves(model_0_results, figures_path = figures_path)
 
-
-    # Get the current date and time
-    now = datetime.now()
-    now_str = now.strftime("%Y%m%d_%H%M%S")
     # Include it in the model name
-    model_name = f"model_{now_str}.pth"
+    model_name = 'model.pth'
+    
 
     # Save the model
     save_model(model=model_0,
                target_dir=model_save_path,
                model_name=model_name)
+    
+
+    # Define information about the model training for info file 
+    training_info = {
+        'training_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'number_of_classes': num_classes,  
+        'number_of_epochs': NUM_EPOCHS,
+        'batch_size': BATCH_SIZE,
+        'classes': class_names,
+        'training_duration': f'{end_time-start_time:.3f} seconds',
+        'data_path': data_path
+    }
+
+    # Write the information to a text file
+    output_file_path = model_save_path / 'training_info.txt'
+    with open(output_file_path, 'w') as f:
+        for key, value in training_info.items():
+            f.write(f'{key}: {value}\n')
 
     #summary(model=model_0, 
             #input_size=(1, 3, 180, 180), # make sure this is "input_size", not "input_shape"
@@ -167,6 +191,6 @@ if __name__ == "__main__":
             #col_width=20,
             #row_settings=["var_names"])
     
-    show_model(model = model_0, dataloader = val_with_unclassifiable_dataloader, class_names = class_names, figures_path = figures_path)
+    show_model(model = model_0, dataloader = val_dataloader, class_names = class_names, figures_path = figures_path)
     
     create_confusion_matrix(model = model_0, test_dataloader = test_dataloader, num_classes = num_classes, class_names = class_names, figures_path = figures_path)

@@ -38,15 +38,21 @@ if __name__ == "__main__":
         unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
     elif parser.parse_args().data == "all":
         data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
+    elif parser.parse_args().data == "syke2022":
+        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     if parser.parse_args().model == "main":
-        path_to_model = base_dir / 'data' / 'model_main_240116.pth'
+        model_path = base_dir / 'data' / 'models' /'model_main_240116' 
     elif parser.parse_args().model == "development":
-        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
+        model_path = base_dir / 'data' / 'models' / 'development_20240209' 
+    elif parser.parse_args().model == "syke2022":
+        model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
     else:
-        path_to_model = base_dir / 'data' / parser.parse_args().model
+        model_path = base_dir / 'data' / 'models' / parser.parse_args().model 
 
-    figures_path =  base_dir / 'out'
+    figures_path =  model_path / 'figures'
+    model_save_path = model_path / 'model.pth'
     batch_size = 32
 
     train_transform = transforms.Compose([
@@ -87,10 +93,10 @@ if __name__ == "__main__":
         nn.Linear(128, num_classes)
     ) 
     
-    model.load_state_dict(torch.load(path_to_model)) # This line uses .load() to read a .pth file and load the network weights on to the architecture.
+    model.load_state_dict(torch.load(model_save_path)) # This line uses .load() to read a .pth file and load the network weights on to the architecture.
     model.to(device)
     model.eval() # enabling the eval mode to test with new samples.
    
     threshold_df = find_best_thresholds(model=model, dataloader=val_with_unclassifiable_dataloader, class_names=class_names, figures_path=figures_path)
     print(threshold_df)
-    threshold_df.to_csv(figures_path / 'thresholds.csv')
+    threshold_df.to_csv(model_path / 'thresholds.csv')
