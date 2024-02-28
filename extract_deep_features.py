@@ -34,9 +34,9 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='all')
+    parser.add_argument('--data', type=str, help='Specify data selection (test )', default='syke2022')
     parser.add_argument('--num_epochs', type=int, help='Specify data selection (test or all)', default=20)
-    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='main')
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='syke2022')
     parser.add_argument('--renew', type=str, help='Specify if features should be extracted from start (yes or no)', default='no')
     parser.add_argument('--samplingtype', type=str, help='Specify how subsampling should be done (random10, bytaxa, none)', default='bytaxa')
     parser.add_argument('--taxa', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='diatoms')
@@ -47,13 +47,29 @@ if __name__ == "__main__":
     if parser.parse_args().data == "test":
         data_path = base_dir / 'data' / 'development'
         unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
-    elif parser.parse_args().data == "all":
-        data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
-        # wrong - should not be split datasets but a combined one
-    
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    elif parser.parse_args().data == "smhibaltic2023":
+        data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "syke2022":
+        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
-    with open(base_dir / 'model_construction' / 'supportive_files' / 'class_to_idx.txt') as f:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # import the model
+    if parser.parse_args().model == "main":
+        model_path = base_dir / 'data' / 'models' /'model_main_240116' 
+    elif parser.parse_args().model == "development":
+        model_path = base_dir / 'data' / 'models' / 'development_20240209' 
+    elif parser.parse_args().model == "syke2022":
+        model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
+    else:
+        model_path = base_dir / 'data' / 'models' / parser.parse_args().model 
+
+    figures_path =  model_path / 'figures'
+    path_to_model = model_path / 'model.pth'
+
+    with open(model_path / 'class_to_idx.txt') as f:
             data = f.read()
 
     # Infromation about the classes and dicts to translate between the class index (a number) and the class name (ex: Thalassiosira_levanderi)
@@ -63,11 +79,6 @@ if __name__ == "__main__":
     class_names = list(class_to_idx.keys())
 
 
-    # import the model
-    if parser.parse_args().model == "main":
-        path_to_model = base_dir / 'data' / 'model_main_240116.pth'
-    elif parser.parse_args().model == "test":
-        path_to_model = base_dir / 'data' / 'model_20240209_095836.pth'
     model = models.resnet18()
     num_ftrs = model.fc.in_features
     model.fc = nn.Sequential(
