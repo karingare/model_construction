@@ -211,7 +211,7 @@ def create_confusion_matrix(model, test_dataloader, num_classes, class_names, fi
     plt.savefig(full_path)
 
 
-def evaluate(model, dataloader, class_names, figures_path):
+def evaluate(model, dataloader, train_dataloader, class_names, figures_path):
     model.eval()
     all_predictions = []
     all_targets = []
@@ -224,13 +224,30 @@ def evaluate(model, dataloader, class_names, figures_path):
             all_predictions.extend(predictions.cpu().numpy())
             all_targets.extend(targets.cpu().numpy())
     precision, recall, f1, support = precision_recall_fscore_support(all_targets, all_predictions, labels=range(len(class_names)))
+
+
+    # Iterate over the DataLoader
+    # Initialize a dictionary to store the class counts
+    class_counts = {class_name: 0 for class_name in train_dataloader.dataset.dataset.classes}
+
+    # Iterate over the DataLoader
+    for inputs, labels in train_dataloader:
+        # Iterate over each label in the batch
+        for label in labels:
+            # Increment the count for this class
+            class_name = train_dataloader.dataset.dataset.classes[label.item()]
+            class_counts[class_name] += 1
+
     df = pd.DataFrame({
         "Class": class_names,
         "Precision": precision,
         "Recall": recall,
         "F1 Score": f1,
-        "Support": support
+        "Test count": support
     })
+
+    df['Train Count'] = df['Class'].map(class_counts)
+
     df.set_index("Class", inplace=True)
     df.index.name = None
     df.columns.name = None

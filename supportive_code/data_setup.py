@@ -64,21 +64,24 @@ def create_dataloaders(
   # Create an image folder class. This class is used to load the images from the directory, and transform them later. Typically, the images are transofrmed during laoding
       
 
-    class CustomImageFolder(datasets.ImageFolder):
-      def __init__(self, root, transform=None):
-          super().__init__(root)
-          self.transform = transform
-
-      def __getitem__(self, index):
-          img, target = super().__getitem__(index)
-          if self.transform is not None:
-              img = self.transform(img)
-          return img, target
       
     # Create a transform for the training data    
     # Load the full dataset without any transforms
     full_dataset = datasets.ImageFolder(data_path)
     unclassifiable_dataset = datasets.ImageFolder(unclassifiable_path)
+
+
+    # Filter out empty classes
+    class_names = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
+    class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+    class_names_filtered = []
+    class_to_idx_filtered = {}
+    for class_name in class_names:
+        class_path = os.path.join(data_path, class_name)
+        if len(os.listdir(class_path)) > 0:  # Check if class folder is not empty
+            class_names_filtered.append(class_name)
+            class_to_idx_filtered[class_name] = class_to_idx[class_name]
+
 
     # Split the dataset into training and test sets
     train_indices, test_indices = train_test_split(list(range(len(full_dataset))), test_size=0.2, random_state=42)

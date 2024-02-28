@@ -46,6 +46,9 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "syke2022":
         data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "smhibaltic2023":
+        data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     path_to_model = model_path / 'model.pth'
     # set batch size for the dataloader
