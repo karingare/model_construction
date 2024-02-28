@@ -49,6 +49,9 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "syke2022":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2022/labeled_20201020'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "smhibaltic2023":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
     print(f"[INFO] Using data from {data_path} ")
 
@@ -153,7 +156,7 @@ if __name__ == "__main__":
     print(f"[INFO] Total training time: {end_time-start_time:.3f} seconds")
 
     # evaluate with validation_set
-    validation_metrics = evaluate(model_0, val_dataloader, class_names, figures_path)
+    validation_metrics = evaluate(model_0, val_dataloader, train_dataloader, class_names, figures_path)
 
     #plot loss curves
     plot_loss_curves(model_0_results, figures_path = figures_path)

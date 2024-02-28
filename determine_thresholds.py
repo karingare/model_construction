@@ -36,8 +36,9 @@ if __name__ == "__main__":
     if parser.parse_args().data == "test":
         data_path = base_dir / 'data' /'development'
         unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
-    elif parser.parse_args().data == "all":
-        data_path = base_dir / 'data' / 'split_datasets' / 'combined_datasets'
+    elif parser.parse_args().data == "smhibaltic2023":
+        data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "syke2022":
         data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
