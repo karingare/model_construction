@@ -44,17 +44,8 @@ if __name__ == "__main__":
 
 
     if parser.parse_args().data == "test":
-        data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development"
-        unclassifiable_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development_unclassifiable"
-    elif parser.parse_args().data == "syke2022":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2022/labeled_20201020'
-        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
-    elif parser.parse_args().data == "syke2021":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2021'
-        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
-    elif parser.parse_args().data == "smhibaltic2023":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
-        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+        data_path = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Files_for_unclassifiable_test/for_building_code")
+
 
     print(f"[INFO] Using data from {data_path} ")
 
@@ -88,17 +79,21 @@ if __name__ == "__main__":
             transforms.ToTensor(),
         ])
 
+    with_unclassifiable = True
+
     # create dataloaders
-    train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
+    A_dataloader, B_dataloader, CE_dataloader, AD_dataloader, BD_dataloader, class_names, class_to_idx = create_dataloaders( 
         data_path = data_path,
-        unclassifiable_path = unclassifiable_path,
         transform = train_transform,
         simple_transform = simple_transform,
         batch_size = BATCH_SIZE,
-        train_with_unclassifiable=True
+        with_unclassifiable=with_unclassifiable
     )
 
-    
+    if with_unclassifiable:
+        train_dataloader = AD_dataloader
+    else:
+        train_dataloader = A_dataloader
 
     show_dataloader(train_dataloader, figures_path, class_to_idx, num_images=6)
     
@@ -140,16 +135,10 @@ if __name__ == "__main__":
     from timeit import default_timer as timer 
     start_time = timer()
     
-    #summary(model=model_0, 
-    #        input_size=(1, 3, 180, 180), # make sure this is "input_size", not "input_shape"
-    #        col_names=["input_size", "output_size", "num_params", "trainable"],
-    #        col_width=20,
-    #        row_settings=["var_names"])
-    
     # Train model_0 
     model_0_results = train(model=model_0, 
                             train_dataloader=train_dataloader,
-                            test_dataloader=val_dataloader,
+                            test_dataloader=B_dataloader,
                             loss_fn=loss_fn,
                             epochs=NUM_EPOCHS,
                             class_names=class_names
@@ -162,7 +151,7 @@ if __name__ == "__main__":
     print(f"[INFO] Total training time: {end_time-start_time:.3f} seconds")
 
     # evaluate with validation_set
-    validation_metrics = evaluate(model_0, val_dataloader, train_dataloader, class_names, figures_path)
+    validation_metrics = evaluate(model_0, B_dataloader, A_dataloader, class_names, figures_path)
 
     #plot loss curves
     plot_loss_curves(model_0_results, figures_path = figures_path)
@@ -200,6 +189,6 @@ if __name__ == "__main__":
             #col_width=20,
             #row_settings=["var_names"])
     
-    show_model(model = model_0, dataloader = val_dataloader, class_names = class_names, figures_path = figures_path)
+    show_model(model = model_0, dataloader = train_dataloader, class_names = class_names, figures_path = figures_path)
     
-    create_confusion_matrix(model = model_0, test_dataloader = test_dataloader, num_classes = num_classes, class_names = class_names, figures_path = figures_path)
+    create_confusion_matrix(model = model_0, test_dataloader = B_dataloader, num_classes = num_classes, class_names = class_names, figures_path = figures_path)

@@ -30,78 +30,39 @@ def find_classes(dir):
 
 def create_dataloaders(
     data_path: Path,
-    unclassifiable_path: Path,
     transform: transforms.Compose, 
     simple_transform: transforms.Compose,
     batch_size: int,
-):
+    with_unclassifiable: bool = False):
+
     # Load the full dataset without any transforms
-    full_dataset = datasets.ImageFolder(data_path)
-    unclassifiable_dataset = datasets.ImageFolder(unclassifiable_path)
+    A_dataset = datasets.ImageFolder(data_path / "A", transform = transform)
+    B_dataset = datasets.ImageFolder(data_path / "B", transform = simple_transform)
+    CE_dataset = datasets.ImageFolder(data_path / "CE", transform = simple_transform)
+    AD_dataset = datasets.ImageFolder(data_path / "AD", transform = transform)
+    BD_dataset = datasets.ImageFolder(data_path / "BD", transform = simple_transform)
 
-    # Split the dataset into training and test sets
-    train_indices, test_indices = train_test_split(list(range(len(full_dataset))), test_size=0.2, random_state=42)
-
-    # Split the training set into training and validation sets
-    train_indices, val_indices = train_test_split(train_indices, test_size=0.25, random_state=42)
-
-    # Split the unclassifiable images into two groups
-    unclassifiable_val_indices, unclassifiable_test_indices = train_test_split(list(range(len(unclassifiable_dataset))), test_size=0.5, random_state=42)
-
-    # Make the unclassifiable dataset at least as large as the test dataset
-    assert len(unclassifiable_val_indices) >= len(val_indices), f"The unclassifiable_dataset is not large enough, {len(unclassifiable_val_indices)+ len(unclassifiable_test_indices)} images. Should be at least {len(val_indices)+ len(test_indices)} images."
-    assert len(unclassifiable_test_indices) >= len(test_indices), f"The unclassifiable_dataset is not large enough, {len(unclassifiable_val_indices)+ len(unclassifiable_test_indices)} images. Should be at least {len(val_indices)+ len(test_indices)} images."
-
-    num_test_images = len(test_indices)
-    num_val_images = len(val_indices)
-
-    # Adjust the size of unclassifiable_test_indices to match the number of test images
-    unclassifiable_test_indices = unclassifiable_test_indices[:num_test_images]
-    unclassifiable_val_indices = unclassifiable_val_indices[:num_val_images]
-
-    # Create Dataset objects for each subset with the appropriate transforms
-    train_dataset = Subset(full_dataset, train_indices)
-    train_dataset.dataset.transform = transform
-
-    val_dataset = Subset(full_dataset, val_indices)
-    val_dataset.dataset.transform = simple_transform
-
-    test_dataset = Subset(full_dataset, test_indices)
-    test_dataset.dataset.transform = simple_transform
-
-    unclassifiable_test_dataset = Subset(unclassifiable_dataset, unclassifiable_test_indices)
-    unclassifiable_test_dataset.dataset.transform = simple_transform
-
-    unclassifiable_val_dataset = Subset(unclassifiable_dataset, unclassifiable_val_indices)
-    unclassifiable_val_dataset.dataset.transform = simple_transform
-
-    # Concatenate datasets, adding unclassifiable as the fifth class
-    test_with_unclassifiable_dataset = ConcatDataset([test_dataset, unclassifiable_test_dataset])
-    val_with_unclassifiable_dataset = ConcatDataset([val_dataset, unclassifiable_val_dataset])
-    train_with_unclassifiable_dataset = ConcatDataset([train_dataset, unclassifiable_val_dataset])
-
-	  
     num_workers = 32 # this fits with berzelius
 
     # define dataloaders
 
-    RandSampler = RandomSampler(train_with_unclassifiable_dataset, replacement=False, num_samples=None, generator=None)
-    train_dataloader = DataLoader(dataset=train_with_unclassifiable_dataset, batch_size=batch_size, num_workers=num_workers, sampler = RandSampler)
+    A_RandSampler = RandomSampler(A_dataset, replacement=False, num_samples=None, generator=None)
+    AD_RandSampler = RandomSampler(AD_dataset, replacement=False, num_samples=None, generator=None)
 
-    val_dataloader = DataLoader(dataset=val_dataset,batch_size=batch_size, num_workers=num_workers, shuffle=False) # don't usually need to shuffle testing data
-    val_with_unclassifiable_dataloader = DataLoader(dataset=val_with_unclassifiable_dataset,batch_size=batch_size,num_workers=num_workers, shuffle=True) # don't usually need to shuffle testing data
-    test_dataloader = DataLoader(dataset=test_dataset,
-		                             batch_size=batch_size, 
-		                             num_workers=num_workers, 
-		                             shuffle=False) 
-    test_with_unclassifiable_dataloader = DataLoader(dataset=test_with_unclassifiable_dataset,
-		                             batch_size=batch_size, 
-		                             num_workers=num_workers, 
-		                             shuffle=False) 
+    A_dataloader = DataLoader(dataset=A_dataset, batch_size=batch_size, num_workers=num_workers, sampler = A_RandSampler)
+    AD_dataloader = DataLoader(dataset=AD_dataset, batch_size=batch_size, num_workers=num_workers, sampler = AD_RandSampler)
 
-    classes, class_to_idx = find_classes(data_path)
+    B_dataloader = DataLoader(dataset=B_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
+    CE_dataloader = DataLoader(dataset=CE_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
+    BD_dataloader = DataLoader(dataset=BD_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
-    return train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, classes, class_to_idx
+
+    if with_unclassifiable:
+        classes, class_to_idx = find_classes(data_path / 'AD')
+    elif not with_unclassifiable:
+        classes, class_to_idx = find_classes(data_path / 'A')
+
+    return A_dataloader, B_dataloader, CE_dataloader, AD_dataloader, BD_dataloader, classes, class_to_idx
 
 
 
