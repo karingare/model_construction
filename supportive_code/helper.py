@@ -15,6 +15,7 @@ from torchmetrics import ConfusionMatrix
 from mlxtend.plotting import plot_confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, precision_recall_fscore_support
 import pandas as pd
+import numpy as np
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -144,6 +145,35 @@ def save_model(model: torch.nn.Module,
     torch.save(obj=model.state_dict(),
              f=model_save_path)
     
+
+
+def show_dataloader(dataloader, figures_path, class_to_idx, num_images=6):
+    plt.figure()
+    idx_to_class = {idx: class_name for class_name, idx in class_to_idx.items()}
+    images_so_far = 0
+
+    with torch.no_grad():
+        for i, (inputs, labels) in enumerate(dataloader):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            for j in range(0,6):
+                images_so_far += 1
+                print(labels)
+                ax = plt.subplot(num_images//2, 2, images_so_far)
+                ax.axis('off')
+                class_name = idx_to_class[labels[j].item()]
+                ax.set_title(f'class: {class_name}')
+                plt.imshow(tf.transpose(inputs.cpu().data[j], perm=([1, 2, 0])))
+
+            if images_so_far == num_images:
+                break
+
+	# 4. Save the figure
+    full_path = figures_path / 'show_dataloader.png'
+    plt.savefig(full_path)
+
+
 def show_model(model, dataloader, class_names, figures_path, num_images=6):
     plt.figure()
     was_training = model.training
@@ -215,6 +245,7 @@ def evaluate(model, dataloader, train_dataloader, class_names, figures_path):
     model.eval()
     all_predictions = []
     all_targets = []
+    
     with torch.no_grad():
         for inputs, targets in dataloader:
             inputs = inputs.to(device)
@@ -228,14 +259,16 @@ def evaluate(model, dataloader, train_dataloader, class_names, figures_path):
 
     # Iterate over the DataLoader
     # Initialize a dictionary to store the class counts
-    class_counts = {class_name: 0 for class_name in train_dataloader.dataset.dataset.classes}
+    class_counts = {class_name: 0 for class_name in class_names}
 
+    
     # Iterate over the DataLoader
     for inputs, labels in train_dataloader:
         # Iterate over each label in the batch
         for label in labels:
+            # Map label index to class name
+            class_name = class_names[label.item()]
             # Increment the count for this class
-            class_name = train_dataloader.dataset.dataset.classes[label.item()]
             class_counts[class_name] += 1
 
     df = pd.DataFrame({

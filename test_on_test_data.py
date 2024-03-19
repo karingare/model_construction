@@ -100,7 +100,7 @@ if __name__ == "__main__":
     thresholds = pd.read_csv(model_path / 'thresholds.csv')['Threshold']
 
     # call the evaluation function
-    eval_df = evaluate_on_test(model, test_dataloader, class_names, thresholds)
+    eval_df = evaluate_on_test(model, test_with_unclassifiable_dataloader, class_names, thresholds)
 
     print(eval_df)
     

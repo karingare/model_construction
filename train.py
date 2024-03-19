@@ -27,7 +27,7 @@ from torch.optim.lr_scheduler import MultiStepLR
 # scripts I wrote
 from supportive_code.data_setup import create_dataloaders
 from supportive_code.engine import train
-from supportive_code.helper import plot_loss_curves, show_model, create_confusion_matrix, evaluate, save_model
+from supportive_code.helper import plot_loss_curves, show_model, create_confusion_matrix, evaluate, save_model, show_dataloader
 from supportive_code.padding import NewPad, NewPadAndTransform
 
 
@@ -49,12 +49,14 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "syke2022":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2022/labeled_20201020'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "syke2021":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2021'
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "smhibaltic2023":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
     print(f"[INFO] Using data from {data_path} ")
-
 
     # Get the current date and time
     now = datetime.now()
@@ -72,7 +74,7 @@ if __name__ == "__main__":
     NUM_EPOCHS = parser.parse_args().num_epochs
 
     train_transform = transforms.Compose([
-                NewPadAndTransform(),#include more transforms like RandomRotation
+                NewPadAndTransform(),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.ColorJitter(brightness = [0.95,1.1]),
@@ -92,8 +94,13 @@ if __name__ == "__main__":
         unclassifiable_path = unclassifiable_path,
         transform = train_transform,
         simple_transform = simple_transform,
-        batch_size = BATCH_SIZE
+        batch_size = BATCH_SIZE,
+        train_with_unclassifiable=True
     )
+
+    
+
+    show_dataloader(train_dataloader, figures_path, class_to_idx, num_images=6)
     
     num_classes = len(class_names)
 
@@ -133,11 +140,11 @@ if __name__ == "__main__":
     from timeit import default_timer as timer 
     start_time = timer()
     
-    summary(model=model_0, 
-            input_size=(1, 3, 180, 180), # make sure this is "input_size", not "input_shape"
-            col_names=["input_size", "output_size", "num_params", "trainable"],
-            col_width=20,
-            row_settings=["var_names"])
+    #summary(model=model_0, 
+    #        input_size=(1, 3, 180, 180), # make sure this is "input_size", not "input_shape"
+    #        col_names=["input_size", "output_size", "num_params", "trainable"],
+    #        col_width=20,
+    #        row_settings=["var_names"])
     
     # Train model_0 
     model_0_results = train(model=model_0, 
@@ -147,7 +154,6 @@ if __name__ == "__main__":
                             epochs=NUM_EPOCHS,
                             class_names=class_names
                             )
-
 
     # End the timer and print out how long it took
     end_time = timer()
