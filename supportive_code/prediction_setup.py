@@ -99,25 +99,6 @@ def find_best_thresholds(model, dataloader, class_names, figures_path):
     return df
 
 
-
-def create_predict_dataloader(
-    data_path: str, 
-    transform: transforms.Compose, 
-    batch_size: int,
-    dataset,
-    shuffle = False
-): 
-    #define dataloaders
-    batch_size = batch_size
-    num_workers = 32
-    predict_dataloader = DataLoader(dataset=dataset,
-                                 batch_size=batch_size, 
-                                 num_workers=num_workers, 
-                                 shuffle=shuffle) 
-    
-    return predict_dataloader
-
-
 def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
     predictions = []
     threshold_df = pd.read_csv(thresholds_path, index_col=0)
@@ -181,8 +162,8 @@ def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
     return df_of_predictions, image_class_table, summarized_predictions_per_class
 
 
-
-def evaluate_on_test(model, dataloader, class_names, thresholds):
+def evaluate_on_test(model, dataloader, class_names, with_unclassifiable: bool, thresholds = ''):
+    # set up empty variables
     num_classes = len(class_names)
     probabilities = []
     all_labels = []
@@ -192,6 +173,7 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
 
     with torch.no_grad():
         for inputs, labels in dataloader:
+            # use model on inputs, save probablilities and true labels
             inputs = inputs.to(device)
             labels = labels.to(device)
             outputs = model(inputs)
@@ -202,26 +184,52 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
     max_probabilities, preds = torch.max(probabilities.cpu(), dim=1) # pred is a tensor of numbers (assigned labels)
     tensor_labels = torch.stack(all_labels)
 
-    for i in tqdm(range(num_classes)):
-        true_positives = 0
-        false_positives = 0
-        false_negatives = 0
-        threshold = thresholds[i]
-        # condition 1: filter preds to only contain indices where the predicted class is i
-        preds_i = preds == i # preds_i is a tensor with "True" and "False" values
+    # the next loop is different for the case with and without unclassifiable
 
-        # condition 2: filter preds_i to only where the max_probabilities value is larger than the threshold
-        preds_i_thresh = preds_i & (max_probabilities > threshold) # preds_i_thresh is a tensor with True and False values
-        true_positives = torch.sum(preds_i_thresh.cpu() & (tensor_labels.cpu() == i)).item()
-        false_positives = torch.sum(preds_i_thresh.cpu() & (tensor_labels.cpu() != i)).item()
-        false_negatives = torch.sum((preds_i_thresh == False) & (tensor_labels.cpu() == i)).item()
+    if not with_unclassifiable:
+        for i in tqdm(range(num_classes)):
+            true_positives = 0
+            false_positives = 0
+            false_negatives = 0
+            threshold = thresholds[i]
 
-        precision = true_positives / (true_positives + false_positives + 1e-15)
-        recall = true_positives / (true_positives + false_negatives + 1e-15)
-        f1 = 2 * (precision * recall) / (precision + recall + 1e-15)
-        precision_scores.append(precision)
-        recall_scores.append(recall)
-        f1_scores.append(f1)
+            # condition 1: filter preds to only contain indices where the predicted class is i
+            preds_i = preds == i # preds_i is a tensor with "True" and "False" values
+
+            # condition 2: filter preds_i to only where the max_probabilities value is larger than the threshold
+            preds_i_thresh = preds_i & (max_probabilities > threshold) # preds_i_thresh is a tensor with True and False values
+            true_positives = torch.sum(preds_i_thresh.cpu() & (tensor_labels.cpu() == i)).item()
+            false_positives = torch.sum(preds_i_thresh.cpu() & (tensor_labels.cpu() != i)).item()
+            false_negatives = torch.sum((preds_i_thresh == False) & (tensor_labels.cpu() == i)).item()
+
+            precision = true_positives / (true_positives + false_positives + 1e-15)
+            recall = true_positives / (true_positives + false_negatives + 1e-15)
+            f1 = 2 * (precision * recall) / (precision + recall + 1e-15)
+            precision_scores.append(precision)
+            recall_scores.append(recall)
+            f1_scores.append(f1)
+
+    elif with_unclassifiable:
+        for i in tqdm(range(num_classes)):
+            true_positives = 0
+            false_positives = 0
+            false_negatives = 0
+
+            # condition 1: filter preds to only contain indices where the predicted class is i
+            preds_i = preds == i # preds_i is a tensor with "True" and "False" values
+
+            # count (condition 2 is not needed)
+            true_positives = torch.sum(preds_i.cpu() & (tensor_labels.cpu() == i)).item()
+            false_positives = torch.sum(preds_i.cpu() & (tensor_labels.cpu() != i)).item()
+            false_negatives = torch.sum((preds_i == False) & (tensor_labels.cpu() == i)).item()
+
+            precision = true_positives / (true_positives + false_positives + 1e-15)
+            recall = true_positives / (true_positives + false_negatives + 1e-15)
+            f1 = 2 * (precision * recall) / (precision + recall + 1e-15)
+            precision_scores.append(precision)
+            recall_scores.append(recall)
+            f1_scores.append(f1)
+
 
     df = pd.DataFrame({'Precision': precision_scores, 'Recall':recall_scores, 'F1': f1_scores})
     df.index = class_names

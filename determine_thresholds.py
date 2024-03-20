@@ -30,25 +30,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
-    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='development')
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='main')
 
 
+    
     if parser.parse_args().data == "test":
-        data_path = base_dir / 'data' /'development'
-        unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
-    elif parser.parse_args().data == "smhibaltic2023":
-        data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
-        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
-    elif parser.parse_args().data == "syke2022":
-        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
-        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+        data_path = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Files_for_unclassifiable_test/for_building_code")
 
     if parser.parse_args().model == "main":
-        model_path = base_dir / 'data' / 'models' /'model_main_240116' 
-    elif parser.parse_args().model == "development":
-        model_path = base_dir / 'data' / 'models' / 'development_20240209' 
-    elif parser.parse_args().model == "syke2022":
-        model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
+        model_path = base_dir / 'data' / 'models' /'model_without_uncl_development'
     else:
         model_path = base_dir / 'data' / 'models' / parser.parse_args().model 
 
@@ -71,15 +61,15 @@ if __name__ == "__main__":
             transforms.ToTensor(),
         ])
     
+    with_unclassifiable = False
 
 
-    # create dataset and dataloader for the valid dataset
-    train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
+    _, _, _, _, BD_dataloader, class_names, class_to_idx = create_dataloaders( 
         data_path = data_path,
-        unclassifiable_path = unclassifiable_path,
         transform = train_transform,
         simple_transform = simple_transform,
-        batch_size = batch_size
+        batch_size = batch_size,
+        with_unclassifiable = with_unclassifiable
     )
     
     idx_to_class = {v: k for k, v in class_to_idx.items()}
@@ -98,6 +88,6 @@ if __name__ == "__main__":
     model.to(device)
     model.eval() # enabling the eval mode to test with new samples.
    
-    threshold_df = find_best_thresholds(model=model, dataloader=val_with_unclassifiable_dataloader, class_names=class_names, figures_path=figures_path)
+    threshold_df = find_best_thresholds(model=model, dataloader=BD_dataloader, class_names=class_names, figures_path=figures_path)
     print(threshold_df)
     threshold_df.to_csv(model_path / 'thresholds.csv')

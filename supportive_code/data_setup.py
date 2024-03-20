@@ -20,7 +20,6 @@ from pathlib import Path
 from torch.utils.data import Subset
 import random
 
-
 def find_classes(dir):
     classes = os.listdir(dir)
     if '.DS_Store' in classes: classes.remove('.DS_Store')

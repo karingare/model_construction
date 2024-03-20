@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar  6 15:35:56 2023
+Created on Mon Mar 6 15:35:56 2023
 
 @author: forskningskarin
 
@@ -13,7 +13,7 @@ import torch
 from torch import nn
 from pathlib import Path
 import argparse
-from supportive_code.prediction_setup import create_predict_dataloader, evaluate_on_test
+from supportive_code.prediction_setup import evaluate_on_test
 import ast
 import pandas as pd
 from supportive_code.padding import NewPad
@@ -26,31 +26,24 @@ if __name__ == "__main__":
     figures_path =  base_dir / 'out'
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='test')
+    parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='main_test')
     parser.add_argument('--testtype', type=str, help='Specify the type of test data to use (fraction of full set or separate set)', default='fraction')
-    parser.add_argument('--data', type=str, help='Specify any specific dataset to use', default='development')
+    parser.add_argument('--data', type=str, help='Specify any specific dataset to use', default='test')
 
+    with_unclassifiable = True
     
-    if parser.parse_args().model == "main":
-        model_path = base_dir / 'data' / 'models' /'model_main_240116' 
-    elif parser.parse_args().model == "development":
-        model_path = base_dir / 'data' / 'models' / 'development_20240209' 
-    elif parser.parse_args().model == "syke2022":
-        model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
-    else:
-        model_path = base_dir / 'data' / 'models' / parser.parse_args().model 
+    if parser.parse_args().model == "main_test" and not with_unclassifiable:
+        model_path = base_dir / 'data' / 'models' /'model_without_uncl_development'
+    elif parser.parse_args().model == "main_test" and with_unclassifiable:
+        model_path = base_dir / 'data' / 'models' /'model_with_uncl_development'
 
-    if parser.parse_args().data == "development":
-        data_path = base_dir / 'data' / 'development'
-        unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
-    elif parser.parse_args().data == "syke2022":
-        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
-        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
-    elif parser.parse_args().data == "smhibaltic2023":
-        data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
-        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    if parser.parse_args().data == "test":
+        data_path = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Files_for_unclassifiable_test/for_building_code")
+
 
     path_to_model = model_path / 'model.pth'
+
+
     # set batch size for the dataloader
     batch_size = 32
 
@@ -83,24 +76,25 @@ if __name__ == "__main__":
             transforms.ToTensor(),
             ])
 
-    # create dataset and dataloader for the data to be predicted on
-    dataset = datasets.ImageFolder(root=data_path, transform=transform)
+    # Create dataloader
 
-    if parser.parse_args().testtype == "fraction":
-        _, _, _, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
-            data_path = data_path,
-            unclassifiable_path = unclassifiable_path,
-            transform = transform,
-            simple_transform = transform,
-            batch_size = batch_size)
-    elif parser.parse_args().testtype == "separate":
-        test_dataloader = create_predict_dataloader(data_path = data_path, transform = transform, batch_size = batch_size, dataset = dataset)
 
+    _, _, CE_dataloader, _, _, class_names, class_to_idx = create_dataloaders( 
+        data_path = data_path,
+        transform = transform,
+        simple_transform = transform,
+        batch_size = batch_size,
+        with_unclassifiable=with_unclassifiable
+    )
     # read the thresholds
-    thresholds = pd.read_csv(model_path / 'thresholds.csv')['Threshold']
+
+    if not with_unclassifiable:
+        thresholds = pd.read_csv(model_path / 'thresholds.csv')['Threshold']
+    else:
+        thresholds = _
 
     # call the evaluation function
-    eval_df = evaluate_on_test(model, test_with_unclassifiable_dataloader, class_names, thresholds)
+    eval_df = evaluate_on_test(model = model, dataloader = CE_dataloader, class_names= class_names, with_unclassifiable=with_unclassifiable, thresholds = thresholds)
 
     print(eval_df)
     
