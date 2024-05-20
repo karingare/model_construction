@@ -42,6 +42,9 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "syke2022":
         data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesund":
+        data_path = base_dir / 'data' / 'tangesund_by_class'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     if parser.parse_args().model == "main":
         model_path = base_dir / 'data' / 'models' /'model_main_240116' 
