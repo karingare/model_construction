@@ -52,9 +52,11 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "smhibaltic2023":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesund":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_by_class'
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
     print(f"[INFO] Using data from {data_path} ")
-
 
     # Get the current date and time
     now = datetime.now()

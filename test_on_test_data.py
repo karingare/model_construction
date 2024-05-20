@@ -49,8 +49,12 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "smhibaltic2023":
         data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesund":
+        data_path = base_dir / 'data' / 'tangesund_by_class'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     path_to_model = model_path / 'model.pth'
+
     # set batch size for the dataloader
     batch_size = 32
 
@@ -70,7 +74,7 @@ if __name__ == "__main__":
         nn.Linear(num_ftrs, 256),
         nn.Linear(256, 128),
         nn.Linear(128, num_classes)
-    ) 
+    )
      
     model.load_state_dict(torch.load(path_to_model))
     model.to(device)
