@@ -50,10 +50,27 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = base_dir / 'data' / 'tangesund_by_class'
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     path_to_model = model_path / 'model.pth'
+
+    training_info_path = model_path / 'training_info.txt'
+
+    # Read the file contents
+    training_info = {}
+    with open(training_info_path, 'r') as f:
+        for line in f:
+            key, value = line.strip().split(': ', 1)
+            # Try to evaluate value if it's a list or int/float, otherwise keep it as a string
+            try:
+                value = eval(value)
+            except (SyntaxError, NameError):
+                pass
+            training_info[key] = value
+
+    # Example: Access the padding_mode
+    padding_mode = training_info.get('padding_mode')
 
     # set batch size for the dataloader
     batch_size = 32
@@ -82,7 +99,7 @@ if __name__ == "__main__":
 
 
     transform = transforms.Compose([
-            NewPad(),
+            NewPad(padding_mode=padding_mode),
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
             ])

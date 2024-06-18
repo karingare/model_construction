@@ -41,6 +41,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
     parser.add_argument('--num_epochs', type=int, help='Specify data selection (test or all)', default=20)
+    parser.add_argument('--padding_mode', type=str, help='Specify padding type (constant, reflect, etc)', default='constant')
 
 
     if parser.parse_args().data == "test":
@@ -53,7 +54,7 @@ if __name__ == "__main__":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_by_class'
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
     print(f"[INFO] Using data from {data_path} ")
@@ -69,12 +70,13 @@ if __name__ == "__main__":
     figures_path.mkdir(parents=True, exist_ok=True)
 
     padding = True
+    padding_mode = parser.parse_args().padding_mode
 
     BATCH_SIZE = 32
     NUM_EPOCHS = parser.parse_args().num_epochs
 
     train_transform = transforms.Compose([
-                NewPadAndTransform(),#include more transforms like RandomRotation
+                NewPadAndTransform(padding_mode=padding_mode),#include more transforms like RandomRotation
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.ColorJitter(brightness = [0.95,1.1]),
@@ -83,7 +85,7 @@ if __name__ == "__main__":
             ])
 
     simple_transform = transforms.Compose([
-            NewPad(),
+            NewPad(padding_mode=padding_mode),
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
         ])
@@ -181,7 +183,8 @@ if __name__ == "__main__":
         'batch_size': BATCH_SIZE,
         'classes': class_names,
         'training_duration': f'{end_time-start_time:.3f} seconds',
-        'data_path': data_path
+        'data_path': data_path,
+        'padding_mode': padding_mode
     }
 
     # Write the information to a text file
@@ -196,6 +199,6 @@ if __name__ == "__main__":
             #col_width=20,
             #row_settings=["var_names"])
     
-    show_model(model = model_0, dataloader = val_dataloader, class_names = class_names, figures_path = figures_path)
+    show_model(model = model_0, dataloader = test_dataloader, class_names = class_names, figures_path = figures_path)
     
     create_confusion_matrix(model = model_0, test_dataloader = test_dataloader, num_classes = num_classes, class_names = class_names, figures_path = figures_path)

@@ -71,6 +71,26 @@ if __name__ == "__main__":
 
     with open(model_path / 'class_to_idx.txt') as f:
             data = f.read()
+    
+
+    training_info_path = model_path / 'training_info.txt'
+
+    # Read the file contents
+    training_info = {}
+    with open(training_info_path, 'r') as f:
+        for line in f:
+            key, value = line.strip().split(': ', 1)
+            # Try to evaluate value if it's a list or int/float, otherwise keep it as a string
+            try:
+                value = eval(value)
+            except (SyntaxError, NameError):
+                pass
+            training_info[key] = value
+
+    # Example: Access the padding_mode
+    padding_mode = training_info.get('padding_mode')
+
+
 
     # Infromation about the classes and dicts to translate between the class index (a number) and the class name (ex: Thalassiosira_levanderi)
     class_to_idx = ast.literal_eval(data)
@@ -98,7 +118,7 @@ if __name__ == "__main__":
 
     # image transforms used
     simple_transform = transforms.Compose([
-            NewPad(),
+            NewPad(padding_mode=padding_mode),
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
         ])

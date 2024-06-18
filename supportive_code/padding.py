@@ -29,7 +29,7 @@ def mode_pixel_value(img):
 
 def get_padding(image):
     w, h = image.size
-    max_wh = 224
+    max_wh = 180
     h_padding = (max_wh - w) / 2
     v_padding = (max_wh - h) / 2
     l_pad = h_padding if h_padding % 1 == 0 else h_padding + 0.5
@@ -41,20 +41,20 @@ def get_padding(image):
 
 
 class NewPadBase:
-    def __init__(self, padding_mode='reflect', max_translate=10):
+    def __init__(self, padding_mode='constant', max_translate=10):
         assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric']
         self.padding_mode = padding_mode
         self.max_translate = max_translate
 
     def pad_image(self, img):
-        max_size = 224
+        max_size = 180
 
-        # Resize image if it is larger than 224x224 or smaller than 224x224
+        # Resize image to be 180 wide
         aspect_ratio = img.size[1] / img.size[0]  # height/width
         img = img.resize((max_size, int(max_size * aspect_ratio)))
 
         fill = tuple(mode_pixel_value(img).getdata())
-        
+
         return pad(img, get_padding(img), fill, self.padding_mode)
 
 

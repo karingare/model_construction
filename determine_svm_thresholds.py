@@ -46,7 +46,7 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = base_dir / 'data' / 'tangesund_by_class'
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     if parser.parse_args().model == "main":

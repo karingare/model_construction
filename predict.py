@@ -56,6 +56,23 @@ if __name__ == "__main__":
     figures_path.mkdir(parents=True, exist_ok=True)
 
     thresholds_path = model_path / 'thresholds.csv'
+
+    training_info_path = model_path / 'training_info.txt'
+
+    # Read the file contents
+    training_info = {}
+    with open(training_info_path, 'r') as f:
+        for line in f:
+            key, value = line.strip().split(': ', 1)
+            # Try to evaluate value if it's a list or int/float, otherwise keep it as a string
+            try:
+                value = eval(value)
+            except (SyntaxError, NameError):
+                pass
+            training_info[key] = value
+
+    # Example: Access the padding_mode
+    padding_mode = training_info.get('padding_mode')
     
     # set batch size for the dataloader
     batch_size = 32
