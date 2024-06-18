@@ -20,6 +20,31 @@ from pathlib import Path
 from torch.utils.data import Subset
 import random
 
+class CustomImageFolder(datasets.ImageFolder):
+        def find_classes(self, directory):
+            # List all directories in the given path
+            class_names = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+            class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+            
+            # Filter out classes that are empty or do not contain at least 30 PNG files
+            class_names_filtered = []
+            class_to_idx_filtered = {}
+            
+            for class_name in class_names:
+                class_path = os.path.join(directory, class_name)
+                # List all files in the directory
+                files = os.listdir(class_path)
+                # Count the number of PNG files
+                num_png_files = sum(1 for file in files if file.endswith('.png'))
+                
+                if num_png_files >= 30:  # Check if class folder contains at least 30 PNG files
+                    class_names_filtered.append(class_name)
+                    class_to_idx_filtered[class_name] = class_to_idx[class_name]
+
+            class_names_filtered.sort()
+            class_to_idx_filtered = {class_name: i for i, class_name in enumerate(class_names_filtered)}
+            
+            return class_names_filtered, class_to_idx_filtered
 
 def find_classes(dir):
     classes = os.listdir(dir)
@@ -33,7 +58,9 @@ def create_dataloaders(
     unclassifiable_path: Path,
     transform: transforms.Compose, 
     simple_transform: transforms.Compose,
-    batch_size: int
+    batch_size: int,
+    filenames: bool = False, 
+    model_path: str = None
 ):
     """Creates training, testing and validation DataLoaders.
 
@@ -59,29 +86,15 @@ def create_dataloaders(
                                num_workers=4)
     """
 
-
-
-  # Create an image folder class. This class is used to load the images from the directory, and transform them later. Typically, the images are transofrmed during laoding
-      
-
+    # Create an image folder class. This class is used to load the images from the directory, and transform them later. Typically, the images are transofrmed during laoding
       
     # Create a transform for the training data    
     # Load the full dataset without any transforms
-    full_dataset = datasets.ImageFolder(data_path)
-    unclassifiable_dataset = datasets.ImageFolder(unclassifiable_path)
 
-
-    # Filter out empty classes
-    class_names = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
-    class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
-    class_names_filtered = []
-    class_to_idx_filtered = {}
-    for class_name in class_names:
-        class_path = os.path.join(data_path, class_name)
-        if len(os.listdir(class_path)) > 0:  # Check if class folder is not empty
-            class_names_filtered.append(class_name)
-            class_to_idx_filtered[class_name] = class_to_idx[class_name]
-
+    
+    
+    full_dataset = CustomImageFolder(data_path)
+    unclassifiable_dataset = CustomImageFolder(unclassifiable_path)
 
     # Split the dataset into training and test sets
     train_indices, test_indices = train_test_split(list(range(len(full_dataset))), test_size=0.2, random_state=42)
@@ -122,9 +135,19 @@ def create_dataloaders(
     test_with_unclassifiable_dataset = ConcatDataset([test_dataset, unclassifiable_dataset])
     val_with_unclassifiable_dataset = ConcatDataset([val_dataset, unclassifiable_dataset])
 
-
-
     RandSampler = RandomSampler(train_dataset, replacement=False, num_samples=None, generator=None)
+
+  
+    if filenames:  # save a file with the names of the training, testing and validation images
+        with open(model_path / 'train_filenames.txt', 'w') as f:
+            for idx in train_indices:
+                f.write(os.path.basename(full_dataset.samples[idx][0] + '\n'))
+        with open(model_path / 'val_filenames.txt', 'w') as f:
+            for idx in val_indices:
+                f.write(os.path.basename(full_dataset.samples[idx][0] + '\n'))
+        with open(model_path / 'test_filenames.txt', 'w') as f:
+            for idx in test_indices:
+                f.write(os.path.basename(full_dataset.samples[idx][0] + '\n'))
 
 	  # define dataloaders
     num_workers = 32 # this fits with berzelius
@@ -140,11 +163,11 @@ def create_dataloaders(
 		                             shuffle=False) # don't usually need to shuffle testing data
     
 
-
     val_with_unclassifiable_dataloader = DataLoader(dataset=val_with_unclassifiable_dataset,
 		                             batch_size=batch_size, 
 		                             num_workers=num_workers, 
 		                             shuffle=True) # don't usually need to shuffle testing data
+    
     test_dataloader = DataLoader(dataset=test_dataset,
 		                             batch_size=batch_size, 
 		                             num_workers=num_workers, 
@@ -154,7 +177,7 @@ def create_dataloaders(
 		                             num_workers=num_workers, 
 		                             shuffle=False) 
 
-    classes, class_to_idx = find_classes(data_path)
+    classes, class_to_idx = full_dataset.classes, full_dataset.class_to_idx
 
 
     return train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, classes, class_to_idx

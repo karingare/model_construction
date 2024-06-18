@@ -20,6 +20,7 @@ from supportive_code.helper import show_model, create_confusion_matrix, evaluate
 import ast
 from supportive_code.padding import NewPad
 from supportive_code.data_setup import create_dataloaders
+from supportive_code.data_setup import CustomImageFolder
 import argparse
 
 if __name__ == "__main__":  
@@ -35,6 +36,20 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'ifcb_png_march_2023'
     elif parser.parse_args().data == "tangesund":
         data_path = base_dir / 'data' / 'SMHI_Tangesund_annotated_images'
+    elif parser.parse_args().data == "tangesund_unlabeled":
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
+    elif parser.parse_args().data == '3m':
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/raw_3_png'
+    elif parser.parse_args().data == '6m':
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/raw_6_png'
+    elif parser.parse_args().data == '8m':
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/raw_8_png'
+    elif parser.parse_args().data == "11m":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/raw_11_png'
+    elif parser.parse_args().data == "13m":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/raw_13_png'
+    elif parser.parse_args().data == "16m":
+        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/raw_16'
     else:
         data_path = base_dir / 'data' / 'ifcb_png_march_2023'
 
@@ -89,7 +104,7 @@ if __name__ == "__main__":
 
     
     # create dataset and dataloader for the data to be predicted on
-    dataset = datasets.ImageFolder(root=data_path, transform=transform)
+    dataset = CustomImageFolder(root=data_path, transform=transform)
     new_data_loader = create_predict_dataloader(data_path = data_path, transform = transform, batch_size = batch_size, dataset = dataset)
     
     # display some images

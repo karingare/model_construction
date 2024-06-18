@@ -6,6 +6,7 @@ Created on Mon Mar  6 15:35:56 2023
 @author: forskningskarin
 
 """
+
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import argparse
@@ -16,6 +17,7 @@ from torch import nn
 from torchinfo import summary
 from supportive_code.prediction_setup import create_predict_dataloader, predict_to_csvs, find_best_thresholds
 from supportive_code.helper import show_model, create_confusion_matrix
+from supportive_code.svm_threshold_setup import find_best_svm_thresholds
 import ast
 from pathlib import Path
 import torch.nn.functional
@@ -27,6 +29,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
+    project_dir = Path("/proj/berzelius-2023-48/dd2424/project_v_2")
 
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
@@ -40,10 +43,10 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "syke2022":
-        data_path = '/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020'
+        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
+        data_path = base_dir / 'data' / 'tangesund_by_class'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     if parser.parse_args().model == "main":
@@ -73,8 +76,6 @@ if __name__ == "__main__":
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
         ])
-    
-
 
     # create dataset and dataloader for the valid dataset
     train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
@@ -101,6 +102,6 @@ if __name__ == "__main__":
     model.to(device)
     model.eval() # enabling the eval mode to test with new samples.
    
-    threshold_df = find_best_thresholds(model=model, dataloader=val_dataloader, class_names=class_names, figures_path=figures_path)
-    print(threshold_df)
-    threshold_df.to_csv(model_path / 'thresholds.csv')
+    svm_threshold_df = find_best_svm_thresholds(model=model, dataloader=val_dataloader, class_names=class_names, figures_path=figures_path)
+    print(svm_threshold_df)
+    svm_threshold_df.to_csv(model_path / 'svm_thresholds.csv')

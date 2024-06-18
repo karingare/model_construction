@@ -47,13 +47,13 @@ if __name__ == "__main__":
         data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development"
         unclassifiable_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development_unclassifiable"
     elif parser.parse_args().data == "syke2022":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2022/labeled_20201020'
+        data_path = '/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "smhibaltic2023":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_by_class'
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
     print(f"[INFO] Using data from {data_path} ")
@@ -100,6 +100,8 @@ if __name__ == "__main__":
     num_classes = len(class_names)
 
     print(f"[INFO] There are {num_classes} classes in the dataset. They include {sample(class_names,1 )}, {sample(class_names,1)} and {sample(class_names,1)}.")
+    
+    print(f"[INFO] The classes are: {class_names}")
     
     # save class to idx so it can be accessed by other scripts
     f = open(model_save_path / 'class_to_idx.txt' ,"w")

@@ -5,7 +5,7 @@ Created on Mon Mar  6 15:57:31 2023
 
 @author: forskningskarin
 """
-from torchvision import transforms
+from torchvision import transforms, datasets
 import os
 from torch.utils.data import DataLoader
 import torch
@@ -226,10 +226,6 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
     df = pd.DataFrame({'Precision': precision_scores, 'Recall':recall_scores, 'F1': f1_scores})
     df.index = class_names
     return df
-
-
-
-
 
 
 
