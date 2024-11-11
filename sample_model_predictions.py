@@ -7,6 +7,7 @@ Created on Mon Mar  6 15:35:56 2023
 
 depends on reading a model and a class_to_idx text file that is a dictionary between classes and numbers
 Gets data from data_path, which should have subfolders for each bin
+
 """
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -16,7 +17,7 @@ from torch import nn
 from datetime import datetime
 from pathlib import Path
 from torchinfo import summary
-from supportive_code.prediction_setup import create_predict_dataloader, predict_to_csvs, find_best_thresholds
+from supportive_code.prediction_setup import create_predict_dataloader, predict_to_csvs, find_best_thresholds, sample_and_sort_images
 from supportive_code.helper import show_model, create_confusion_matrix, evaluate
 import ast
 from supportive_code.padding import NewPad
@@ -34,20 +35,35 @@ if __name__ == "__main__":
     base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
 
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='march2023')
-    parser.add_argument('--model', type=str, help='Specify model (main or a name)', default='development')
-    
+    parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='development')
+    parser.add_argument('--model', type=str, help='Specify model (main or a name)', default='main')
+    parser.add_argument('--sample_size', type=int, help='Specify number of images to sample', default=100)
+
     args = parser.parse_args()
 
-    if args.data == "march2023":
+    sample_size = args.sample_size
+
+    if args.data == "development":
+        data_path = base_dir / 'data'/ 'development'
+    elif args.data == "march2023":
         data_path = base_dir / 'data' / 'ifcb_png_march_2023'
+    elif parser.parse_args().data == "syke2022":
+        data_path = Path('/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020')
     elif args.data == "tangesund":
-        data_path = base_dir / 'data' / 'SMHI_Tangesund_annotated_images'
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
+    elif args.data == "tangesund_11_m":
+        data_path = '/scratch/local/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/original_files/raw_11_png'
+    elif args.data == "tangesund_8_m":
+        data_path = '/scratch/local/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/original_files/raw_8_png'
+    elif args.data == "tangesund_6_m":
+        data_path = '/scratch/local/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/original_files/raw_6_png'
+    elif args.data == "tangesund_3_m":
+        data_path = '/scratch/local/proj/berzelius-2023-48/ifcb/main_folder_karin/data/tangesund_png/original_files/raw_3_png'
     else:
         data_path = args.data
 
     if args.model == "main":
-        model_path = base_dir / 'data' / 'models' /'main_20240116'
+        model_path = base_dir / 'data' / 'models' / 'tangesund_july_10'
         path_to_model = model_path / 'model.pth'
     elif args.model == "development":
         model_path = base_dir / 'data' / 'models' / 'development_20240209'
@@ -61,7 +77,7 @@ if __name__ == "__main__":
 
     now = datetime.now()
     now_str = now.strftime("%Y%m%d_%H%M%S")
-    figures_path= model_path / f"predictions_{now_str}"
+    figures_path= model_path / 'sampled_predictions' / now_str
     figures_path.mkdir(parents=True, exist_ok=True)
 
     thresholds_path = model_path / 'thresholds.csv'
@@ -125,19 +141,8 @@ if __name__ == "__main__":
     show_model(model=model, dataloader=new_data_loader, class_names=class_names, figures_path=figures_path)
     log_time(show_model_start, "Showing model")
 
-    predictions_start = time.time()
-    df_of_predictions, summarized_predictions = predict_to_csvs(model=model, data_loader=new_data_loader, dataset=dataset, idx_to_class=idx_to_class, thresholds_path=thresholds_path)
-    log_time(predictions_start, "Making predictions")
+    df = sample_and_sort_images(model, new_data_loader, dataset, idx_to_class, thresholds_path=thresholds_path, output_folder=figures_path, sample_size=sample_size)
 
-    csv_write_start = time.time()
-    df_of_predictions.to_csv(figures_path / 'individual_image_predictions.csv', index=False)
-    summarized_predictions.to_csv(figures_path /'image_class_table.csv')
-    log_time(csv_write_start, "Writing CSV files")
-
-    log_time(start_time, "Total script execution")
-
-    
-    
     
     
     

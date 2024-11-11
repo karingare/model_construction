@@ -49,6 +49,10 @@ class NewPadBase:
     def pad_image(self, img):
         max_size = 180
 
+        # Rotate image if height is greater than width to ensure horizontal orientation
+        if img.size[1] > img.size[0]:
+            img = img.rotate(90, expand=True)
+
         # Resize image to be 180 wide
         aspect_ratio = img.size[1] / img.size[0]  # height/width
         img = img.resize((max_size, int(max_size * aspect_ratio)))

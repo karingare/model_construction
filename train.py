@@ -41,14 +41,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
     parser.add_argument('--num_epochs', type=int, help='Specify data selection (test or all)', default=20)
-    parser.add_argument('--padding_mode', type=str, help='Specify padding type (constant, reflect, etc)', default='constant')
+    parser.add_argument('--padding_mode', type=str, help='Specify padding type (constant, reflect, etc)', default='reflect')
+    parser.add_argument('--model_folder_name', type=str, help='Specify model name', default=None)
+    parser.add_argument('--boost_dataset', type=str, help='Specify boost dataset', default=None)
 
 
     if parser.parse_args().data == "test":
         data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development"
         unclassifiable_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development_unclassifiable"
     elif parser.parse_args().data == "syke2022":
-        data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/SYKE_2022/labeled_20201020'
+        data_path = '/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "smhibaltic2023":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
@@ -56,14 +58,24 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "tangesund":
         data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesundplus":
+        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    else:
+        data_path = parser.parse_args().data
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
 
     print(f"[INFO] Using data from {data_path} ")
 
-    # Get the current date and time
-    now = datetime.now()
-    now_str = now.strftime("%Y%m%d_%H%M%S")
+    if parser.parse_args().model_folder_name == None:
+        # Get the current date and time
+        now = datetime.now()
+        now_str = now.strftime("%Y%m%d_%H%M%S")
+        folder_name = f"model_{now_str}"
+    else:
+        folder_name = parser.parse_args().model_folder_name
 
-    model_save_path = base_dir / 'data' / 'models' / f"model_{now_str}"
+    model_save_path = base_dir / 'data' / 'models' / folder_name
     model_save_path.mkdir(parents=True, exist_ok=True)
 
     figures_path = model_save_path / 'figures'
@@ -71,6 +83,8 @@ if __name__ == "__main__":
 
     padding = True
     padding_mode = parser.parse_args().padding_mode
+
+    boost_dataset = parser.parse_args().boost_dataset
 
     BATCH_SIZE = 32
     NUM_EPOCHS = parser.parse_args().num_epochs
@@ -96,7 +110,8 @@ if __name__ == "__main__":
         unclassifiable_path = unclassifiable_path,
         transform = train_transform,
         simple_transform = simple_transform,
-        batch_size = BATCH_SIZE
+        batch_size = BATCH_SIZE,
+        boost_dataset=boost_dataset
     )
     
     num_classes = len(class_names)
@@ -167,7 +182,6 @@ if __name__ == "__main__":
 
     # Include it in the model name
     model_name = 'model.pth'
-    
 
     # Save the model
     save_model(model=model_0,

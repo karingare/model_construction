@@ -18,6 +18,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 
+import shutil
+import random
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def find_best_thresholds(model, dataloader, class_names, figures_path):
@@ -98,11 +101,10 @@ def find_best_thresholds(model, dataloader, class_names, figures_path):
 
     return df
 
-
+ 
 
 def create_predict_dataloader(
     data_path: str, 
-    transform: transforms.Compose, 
     batch_size: int,
     dataset,
     shuffle = False
@@ -141,11 +143,11 @@ def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
             predictions.extend(predicted)
 
     # 2. Import dictionary 
-    dict = pd.read_excel('supportive_files/dictionary.xlsx') # get dictionary which can translate image classes to tax classes
-    assigned_classes = dict['assigned_class'].tolist()
-    tax_classes = dict['taxonomic_class'].tolist()
+    #dict = pd.read_excel('supportive_files/dictionary.xlsx') # get dictionary which can translate image classes to tax classes
+    #assigned_classes = dict['assigned_class'].tolist()
+    #tax_classes = dict['taxonomic_class'].tolist()
     
-    dictionary = {assigned_classes[i]:tax_classes[i] for i in range(len(assigned_classes))}
+    #dictionary = {assigned_classes[i]:tax_classes[i] for i in range(len(assigned_classes))}
 
     # 3. Make dataframe of predictions per each image id
     image_names = [path[0].split('/')[-1] for path in dataset.imgs]
@@ -153,7 +155,7 @@ def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
     df_of_predictions = pd.DataFrame({'bin_name': bin_names, 'image_name': image_names, 'predicted_class': predictions})
     df_of_predictions.replace(-1, "Unclassified", inplace=True)
     df_of_predictions =df_of_predictions.replace({"predicted_class": idx_to_class})
-    df_of_predictions['taxonomic_class'] = df_of_predictions['predicted_class'].apply(lambda x: dictionary.get(x, 'Unclassified')) #flag
+    #df_of_predictions['taxonomic_class'] = df_of_predictions['predicted_class'].apply(lambda x: dictionary.get(x, 'Unclassified')) #flag
     
     # 4. Group the predictions by bin_name to get the table image_class_table
     counts_per_bin = df_of_predictions.groupby('bin_name')['predicted_class'].value_counts()
@@ -167,18 +169,7 @@ def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
     image_class_table = image_class_table.reset_index()
     image_class_table.loc[image_class_table['predicted_class'] == 'Unclassified', 'relative_abundance_without_unclassifiable'] = 0
 
-    # 5. Translate the image classes to taxonomic classes to get the tax_class_table
-    counts_per_bin = df_of_predictions.groupby('bin_name')['taxonomic_class'].value_counts()
-    total_counts = df_of_predictions.groupby('bin_name')['taxonomic_class'].count() # total counts for each bin
-    total_counts_except_unclassified = df_of_predictions.loc[df_of_predictions['taxonomic_class'] != 'Unclassified'].groupby('bin_name')['taxonomic_class'].count()
-    relative_abundance = counts_per_bin / total_counts
-    relative_abundance.rename('relative_abundance')
-    relative_abundance_without_unclassified = counts_per_bin / total_counts_except_unclassified
-    relative_abundance_without_unclassified.rename('relative_abundance_without_unclassifiable')
-    summarized_predictions_per_class = pd.DataFrame({'counts_per_bin': counts_per_bin, 'relative_abundance': relative_abundance,  'relative_abundance_without_unclassifiable':relative_abundance_without_unclassified})
-    summarized_predictions_per_class = summarized_predictions_per_class.reset_index()
-    summarized_predictions_per_class.loc[summarized_predictions_per_class['taxonomic_class'] == 'Unclassified', 'relative_abundance_without_unclassifiable'] = 0
-    return df_of_predictions, image_class_table, summarized_predictions_per_class
+    return df_of_predictions, image_class_table
 
 
 
@@ -230,10 +221,63 @@ def evaluate_on_test(model, dataloader, class_names, thresholds):
 
 
 
+def sample_and_sort_images(model, data_loader, dataset, idx_to_class, thresholds_path, output_folder, sample_size=100):
+    # Ensure the output folder exists
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
+    predictions = []
+    threshold_df = pd.read_csv(thresholds_path, index_col=0)
+    
+    # 1. Predict on images in dataloader
+    for images, labels in tqdm(data_loader):
+        images = images.to(device)
+        with torch.no_grad():
+            outputs = model(images)
+            probs = torch.softmax(outputs * np.log(1.3), dim=1)
+            predicted = torch.argmax(probs, dim=1)
+            predicted_prob = torch.max(probs, dim=1).values.cpu().numpy()
 
+            # use thresholds from threshold_df to determine whether to classify each image
+            for i in range(len(predicted)):
+                class_name = idx_to_class[predicted[i].item()]
+                threshold = threshold_df.loc[class_name, 'Threshold']
+                if predicted_prob[i].item() < threshold:
+                    predicted[i] = -1  # set the class to -1 for images below threshold
+            predicted = predicted.cpu().numpy()
+            predictions.extend(predicted)
 
+    # 2. Make dataframe of predictions per each image id
+    image_names = [path[0].split('/')[-1] for path in dataset.imgs]
+    bin_names = [path[0].split('/')[-2] for path in dataset.imgs]
+    df_of_predictions = pd.DataFrame({
+        'bin_name': bin_names, 
+        'image_name': image_names, 
+        'predicted_class': predictions
+    })
+    df_of_predictions.replace(-1, "Unclassified", inplace=True)
+    df_of_predictions = df_of_predictions.replace({"predicted_class": idx_to_class})
 
+    # 3. Determine the actual sample size
+    actual_sample_size = min(sample_size, len(df_of_predictions))
 
+    # 4. Randomly sample images
+    sampled_df = df_of_predictions.sample(n=actual_sample_size, replace=False)
 
+    # 5. Sort the images into folders based on their predicted class
+    for idx, row in sampled_df.iterrows():
+        predicted_class = row['predicted_class']
+        image_name = row['image_name']
+        bin_name = row['bin_name']
+        
+        source_path = os.path.join(dataset.root, bin_name, image_name)
+        class_folder = os.path.join(output_folder, predicted_class)
 
+        # Ensure the class folder exists
+        if not os.path.exists(class_folder):
+            os.makedirs(class_folder)
+
+        # Copy the image to the class folder
+        shutil.copy(source_path, os.path.join(class_folder, image_name))
+    
+    return sampled_df

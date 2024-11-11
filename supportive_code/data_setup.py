@@ -15,37 +15,91 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
 import torch.utils.data as data
+from PIL import Image
 import numpy as np
 from pathlib import Path
 from torch.utils.data import Subset
 import random
+import os
+from PIL import Image, UnidentifiedImageError
+from torchvision import datasets
 
 
 class CustomImageFolder(datasets.ImageFolder):
-        def find_classes(self, directory):
-            # List all directories in the given path
-            class_names = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
-            class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+    def find_classes(self, directory):
+        # List all directories in the given path
+        class_names = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+        class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+        
+        # Filter out classes that are empty or do not contain at least n_minimum non-empty valid PNG files
+        n_minimum = 1
+        class_names_filtered = []
+        class_to_idx_filtered = {}
+        
+        for class_name in class_names:
+            class_path = os.path.join(directory, class_name)
+            # List all files in the directory
+            files = os.listdir(class_path)
+            valid_png_files = []
             
-            # Filter out classes that are empty or do not contain at least 30 PNG files
-            class_names_filtered = []
-            class_to_idx_filtered = {}
-            
-            for class_name in class_names:
-                class_path = os.path.join(directory, class_name)
-                # List all files in the directory
-                files = os.listdir(class_path)
-                # Count the number of PNG files
-                num_png_files = sum(1 for file in files if file.endswith('.png'))
-                
-                if num_png_files >= 30:  # Check if class folder contains at least 30 PNG files
-                    class_names_filtered.append(class_name)
-                    class_to_idx_filtered[class_name] = class_to_idx[class_name]
+            for file in files:
+                if file.endswith('.png'):
+                    file_path = os.path.join(class_path, file)
+                    if os.path.getsize(file_path) > 0:
+                        try:
+                            img = Image.open(file_path)
+                            img.verify()  # Verify that it is, indeed, an image
+                            valid_png_files.append(file)
+                        except (IOError, SyntaxError) as e:
+                            print(f'Invalid image file: {file_path} - {e}')
 
-            class_names_filtered.sort()
-            class_to_idx_filtered = {class_name: i for i, class_name in enumerate(class_names_filtered)}
+            if len(valid_png_files) >= n_minimum:  # Check if class folder contains at least n_minumum valid PNG files
+                class_names_filtered.append(class_name)
+                class_to_idx_filtered[class_name] = class_to_idx[class_name]
+
+        class_names_filtered.sort()
+        class_to_idx_filtered = {class_name: i for i, class_name in enumerate(class_names_filtered)}
+        
+        return class_names_filtered, class_to_idx_filtered
+
+    
+  
+class CustomImageFolderAllImages(datasets.ImageFolder): 
+    def find_classes(self, directory):
+        # List all directories in the given path
+        class_names = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+        class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+        
+        # Filter out classes that are empty or do not contain at least 30 non-empty valid PNG files
+        class_names_filtered = []
+        class_to_idx_filtered = {}
+        
+        for class_name in class_names:
+            class_path = os.path.join(directory, class_name)
+            # List all files in the directory
+            files = os.listdir(class_path)
+            valid_png_files = []
             
-            return class_names_filtered, class_to_idx_filtered
+            for file in files:
+                if file.endswith('.png'):
+                    file_path = os.path.join(class_path, file)
+                    if os.path.getsize(file_path) > 0:
+                        try:
+                            img = Image.open(file_path)
+                            img.verify()  # Verify that it is, indeed, an image
+                            valid_png_files.append(file)
+                        except (IOError, SyntaxError) as e:
+                            print(f'Invalid image file: {file_path} - {e}')
+
+            if len(valid_png_files) >= 1:  # Check if class folder contains at least 30 valid PNG files
+                class_names_filtered.append(class_name)
+                class_to_idx_filtered[class_name] = class_to_idx[class_name]
+
+        class_names_filtered.sort()
+        class_to_idx_filtered = {class_name: i for i, class_name in enumerate(class_names_filtered)}
+        
+        return class_names_filtered, class_to_idx_filtered
+        
 
 def find_classes(dir):
     classes = os.listdir(dir)
@@ -54,6 +108,7 @@ def find_classes(dir):
     class_to_idx = {classes[i]: i for i in range(len(classes))}
     return classes, class_to_idx
 
+
 def create_dataloaders(
     data_path: Path,
     unclassifiable_path: Path,
@@ -61,41 +116,42 @@ def create_dataloaders(
     simple_transform: transforms.Compose,
     batch_size: int,
     filenames: bool = False, 
-    model_path: str = None
+    model_path: str = None,
+    boost_dataset: str = None
 ):
-    """Creates training, testing and validation DataLoaders.
-
-    Takes in a directory path with separate folders "train", "test"  etc and turns
-    them into PyTorch Datasets and then into PyTorch DataLoaders.
-
-    Args:
-      train_dir: Path to training directory.
-      test_dir: Path to testing directory.
-      transform: torchvision transforms to perform on training and testing data.
-      batch_size: Number of samples per batch in each of the DataLoaders.
-      num_workers: An integer for number of workers per DataLoader.
-
-    Returns:
-      A tuple of (train_dataloader, test_dataloader, class_names).
-      Where class_names is a list of the target classes.
-      Example usage:
-        train_dataloader, test_dataloader, class_names = \
-          = create_dataloaders(train_dir=path/to/train_dir,
-                               test_dir=path/to/test_dir,
-                               transform=some_transform,
-                               batch_size=32,
-                               num_workers=4)
-    """
-
-    # Create an image folder class. This class is used to load the images from the directory, and transform them later. Typically, the images are transofrmed during laoding
-      
     # Create a transform for the training data    
     # Load the full dataset without any transforms
 
-    
-    
-    full_dataset = CustomImageFolder(data_path)
+
     unclassifiable_dataset = CustomImageFolder(unclassifiable_path)
+
+    # if boost_dataset is not none
+    if boost_dataset is not None:
+        boost_dataset = CustomImageFolder(boost_dataset)
+        full_dataset = CustomImageFolder(data_path)
+
+        classes = []
+        class_to_idx = {}
+    
+        for dataset in [boost_dataset, full_dataset]:
+            if hasattr(dataset, 'classes') and hasattr(dataset, 'class_to_idx'):
+                classes.extend(dataset.classes)
+                class_to_idx.update(dataset.class_to_idx)
+
+        # Ensure unique class names and indices
+        classes = list(set(classes))  # Remove duplicates
+        class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+
+            # Ensure unique class names and indices
+        classes = list(set(classes))  # Remove duplicates
+        class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+
+        full_dataset = ConcatDataset([full_dataset, boost_dataset])
+    else:
+        full_dataset = CustomImageFolder(data_path)
+        classes, class_to_idx = full_dataset.classes, full_dataset.class_to_idx
+        
+
 
     # Split the dataset into training and test sets
     train_indices, test_indices = train_test_split(list(range(len(full_dataset))), test_size=0.2, random_state=42)
@@ -133,11 +189,10 @@ def create_dataloaders(
     unclassifiable_test_dataset = Subset(unclassifiable_dataset, unclassifiable_test_indices)
     unclassifiable_test_dataset.dataset.transform = simple_transform
 
-    test_with_unclassifiable_dataset = ConcatDataset([test_dataset, unclassifiable_dataset])
-    val_with_unclassifiable_dataset = ConcatDataset([val_dataset, unclassifiable_dataset])
+    test_with_unclassifiable_dataset = ConcatDataset([test_dataset, unclassifiable_test_dataset])
+    val_with_unclassifiable_dataset = ConcatDataset([val_dataset, unclassifiable_val_dataset])
 
     RandSampler = RandomSampler(train_dataset, replacement=False, num_samples=None, generator=None)
-
   
     if filenames:  # save a file with the names of the training, testing and validation images
         with open(model_path / 'train_filenames.txt', 'w') as f:
@@ -173,13 +228,11 @@ def create_dataloaders(
 		                             batch_size=batch_size, 
 		                             num_workers=num_workers, 
 		                             shuffle=False) 
+    
     test_with_unclassifiable_dataloader = DataLoader(dataset=test_with_unclassifiable_dataset,
 		                             batch_size=batch_size, 
 		                             num_workers=num_workers, 
 		                             shuffle=False) 
-
-    classes, class_to_idx = full_dataset.classes, full_dataset.class_to_idx
-
 
     return train_dataloader, val_dataloader, val_with_unclassifiable_dataloader, test_dataloader, test_with_unclassifiable_dataloader, classes, class_to_idx
 
