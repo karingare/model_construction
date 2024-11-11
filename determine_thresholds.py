@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
     parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='development')
 
-
+    print(parser.parse_args().data)
     if parser.parse_args().data == "test":
         data_path = base_dir / 'data' /'development'
         unclassifiable_path = base_dir / 'data' / 'development_unclassifiable'
@@ -40,8 +40,8 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'smhi_training_data_oct_2023' / 'Baltic'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "syke2022":
-        data_path = base_dir / 'data' / 'SYKE_2022' / 'labeled_20201020'
-        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+        data_path = Path('/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020')
+        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
         data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         model_path = base_dir / 'data' / 'models' / parser.parse_args().model 
 
 
-        
+    print("[INFO]: Determining thresholds")
 
     training_info_path = model_path / 'training_info.txt'
 

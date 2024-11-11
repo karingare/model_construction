@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument('--samplingtype', type=str, help='Specify how subsampling should be done (random10, bytaxa, none)', default='bytaxa')
     parser.add_argument('--taxa', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='diatoms')
     parser.add_argument('--pcoaandtsne', type=str, help='Specify taxa to look at (diatoms or cyanobacteria))', default='yes')
-
+    
     args = parser.parse_args()
 
     if parser.parse_args().data == "test":

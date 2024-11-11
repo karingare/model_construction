@@ -29,8 +29,6 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='test')
     parser.add_argument('--testtype', type=str, help='Specify the type of test data to use (fraction of full set or separate set)', default='fraction')
     parser.add_argument('--data', type=str, help='Specify any specific dataset to use', default='development')
-
-    
     if parser.parse_args().model == "main":
         model_path = base_dir / 'data' / 'models' /'model_main_240116' 
     elif parser.parse_args().model == "development":
@@ -126,8 +124,10 @@ if __name__ == "__main__":
     print(eval_df)
     
     # write the newly created files
-    eval_df.to_csv(base_dir / 'out' / 'test_set_metrics.csv', index=True) #flag
 
+    eval_df.to_csv(model_path /'figures' /  'test_set_metrics.csv', index=True)
+
+    print(f"[INFO] The test set metrics have been saved to {model_path /'figures' /  'test_set_metrics.csv'}")
     
     
     
