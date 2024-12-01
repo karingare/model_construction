@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print(f"[INFO] Using {device} device")
     
     # setting up paths
-    base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
+    base_dir = Path("/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin")
 
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
@@ -47,8 +47,8 @@ if __name__ == "__main__":
 
 
     if parser.parse_args().data == "test":
-        data_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development"
-        unclassifiable_path = "/proj/berzelius-2023-48/ifcb/main_folder_karin/data/development_unclassifiable"
+        data_path = base_dir / "data" / "development"
+        unclassifiable_path = base_dir / "data" / "development_unclassifiable"
     elif parser.parse_args().data == "syke2022":
         data_path = '/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
@@ -56,8 +56,8 @@ if __name__ == "__main__":
         data_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/smhi_training_data_oct_2023/Baltic'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
-        unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+        data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_Image_Reference_Library_v4/smhi_ifcb_tangesund_annotated_images'
+        unclassifiable_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesundplus":
         data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'

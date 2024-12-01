@@ -31,7 +31,7 @@ def log_time(start, description):
 if __name__ == "__main__":  
     start_time = time.time()
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
+    base_dir = Path("/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin")
 
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='march2023')

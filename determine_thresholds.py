@@ -26,7 +26,7 @@ import tensorflow as tf
 if __name__ == "__main__":  
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    base_dir = Path("/proj/berzelius-2023-48/ifcb/main_folder_karin")
+    base_dir = Path("/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin")
 
     parser = argparse.ArgumentParser(description='My script description')
     parser.add_argument('--data', type=str, help='Specify data selection (test or all)', default='test')
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         data_path = Path('/proj/common-datasets/SYKE-plankton_IFCB_2022/20220201/phytoplankton_labeled/labeled_20201020')
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
-        data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
+        data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_Image_Reference_Library_v4/smhi_ifcb_tangesund_annotated_images'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     if parser.parse_args().model == "main":
