@@ -7,13 +7,12 @@ Created on Mon Mar  6 09:51:44 2023
 """
 
 from typing import List, Dict
-from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
-import tensorflow as tf
+import numpy as np
 from torchmetrics import ConfusionMatrix
 from mlxtend.plotting import plot_confusion_matrix
-from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support
 import pandas as pd
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -163,7 +162,7 @@ def show_model(model, dataloader, class_names, figures_path, num_images=6):
                 ax = plt.subplot(num_images//2, 2, images_so_far)
                 ax.axis('off')
                 ax.set_title(f'predicted: {class_names[preds[j]]}')
-                plt.imshow(tf.transpose(inputs.cpu().data[j], perm=([1, 2, 0])))
+                plt.imshow(inputs.cpu().data[j].permute(1, 2, 0))
 
             if images_so_far == num_images:
                     model.train(mode=was_training)
@@ -209,6 +208,17 @@ def create_confusion_matrix(model, test_dataloader, num_classes, class_names, fi
 	# 4. Save the figure
     full_path = figures_path / 'confusion_matrix.png'
     plt.savefig(full_path)
+
+    # 5. PDF path
+    pdf_path = figures_path / 'confusion_matrix.pdf'
+    plt.savefig(pdf_path)
+    
+    # 6. Save the confusion matrix as a CSV
+    # Convert tensor to numpy
+    conf_matrix_np = confmat_tensor.numpy()
+
+    # Save as CSV
+    np.savetxt(figures_path / "confusion_matrix.csv", conf_matrix_np, delimiter=",")
 
 
 def evaluate(model, dataloader, train_dataloader, class_names, figures_path):

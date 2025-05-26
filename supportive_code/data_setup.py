@@ -11,19 +11,20 @@ Contains functions for creating dataloaders
 import os
 from torch.utils.data import ConcatDataset
 from sklearn.model_selection import train_test_split
-import torch
+import io
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, WeightedRandomSampler, RandomSampler
-import torch.utils.data as data
-from PIL import Image
-import numpy as np
-from pathlib import Path
+from torch.utils.data import Dataset, IterableDataset
 from torch.utils.data import Subset
-import random
+from torchvision import datasets
+from torch.utils.data import DataLoader,  RandomSampler
+from torchdata.datapipes.iter import FileLister, FileOpener
+
+from PIL import Image
+from pathlib import Path
 import os
 from PIL import Image, UnidentifiedImageError
-from torchvision import datasets
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import torchvision.transforms as transforms
 
 class CustomImageFolder(datasets.ImageFolder):
     def find_classes(self, directory):
@@ -32,7 +33,7 @@ class CustomImageFolder(datasets.ImageFolder):
         class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
         
         # Filter out classes that are empty or do not contain at least n_minimum non-empty valid PNG files
-        n_minimum = 1
+        n_minimum = 50  # Minimum number of valid images per class
         class_names_filtered = []
         class_to_idx_filtered = {}
         
@@ -62,8 +63,141 @@ class CustomImageFolder(datasets.ImageFolder):
         
         return class_names_filtered, class_to_idx_filtered
 
-    
-  
+
+
+class CustomImageFolderOptimizedOld(datasets.ImageFolder):
+    def find_classes(self, directory):
+        # List all directories in the given path
+        class_names = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+        class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+        
+        n_minimum = 1  # Minimum number of valid images per class
+
+        def is_valid_png(file_path):
+            if os.path.getsize(file_path) > 0:
+                try:
+                    with Image.open(file_path) as img:
+                        img.verify()  # Verify that it is, indeed, an image
+                    return True
+                except (IOError, SyntaxError):
+                    return False
+            return False
+
+        def process_class(class_name):
+            class_path = os.path.join(directory, class_name)
+            files = os.listdir(class_path)
+            valid_files = [
+                file for file in files if file.endswith('.png') and is_valid_png(os.path.join(class_path, file))
+            ]
+            return class_name if len(valid_files) >= n_minimum else None
+
+        # Use multithreading to speed up file processing
+        class_names_filtered = []
+        with ThreadPoolExecutor() as executor:
+            futures = {executor.submit(process_class, class_name): class_name for class_name in class_names}
+            for future in as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    class_names_filtered.append(result)
+
+        # Sort filtered class names and create a class-to-index mapping
+        class_names_filtered.sort()
+        class_to_idx_filtered = {class_name: i for i, class_name in enumerate(class_names_filtered)}
+
+        return class_names_filtered, class_to_idx_filtered
+
+
+
+# a test for prediction 
+class ImagePathDataset(Dataset):
+    def __init__(self, image_paths, transform=None):
+        self.image_paths = image_paths
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        path = self.image_paths[idx]
+        try:
+            image = Image.open(path).convert('RGB')
+            if self.transform:
+                image = self.transform(image)
+            return image, path
+        except (UnidentifiedImageError, OSError) as e:
+            print(f"⚠️ Skipping unreadable image: {path} ({e})")
+            return None  # Will be filtered out by custom collate_fn
+
+
+
+
+
+# a test for prediction 
+class ImageWebDataset(IterableDataset):
+    def __init__(self, image_path, transform=None):
+        self.image_path = image_path
+        self.transform = transform
+        self.datapipe1 = FileLister(image_path, "*.tar")
+        self.datapipe2 = FileOpener(self.datapipe1, mode="b")
+        self.num_items_estimate = 10000  # arbitrary fallback
+
+    def __len__(self):
+        return self.num_items_estimate
+            
+    def __iter__(self):
+        def decode(item):
+            key, value = item
+            if not key.endswith(".png"):
+                return None
+            try:
+                img_bytes = value.read()
+                img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+                if self.transform:
+                    img = self.transform(img)
+                return img, key
+            except Exception as e:
+                print(f"⚠️ Failed to decode {key}: {e}")
+                return None
+
+        dataset = self.datapipe2.load_from_tar().map(decode).filter(lambda x: x is not None)
+        for obj in dataset:
+            yield obj
+
+class CustomImageFolderOptimized(datasets.ImageFolder):
+    def find_classes(self, directory):
+        class_names = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+        return sorted(class_names), {class_name: i for i, class_name in enumerate(sorted(class_names))}
+
+    def make_dataset(self, directory, class_to_idx, extensions=None, is_valid_file=None, allow_empty=False):
+        def is_valid_png(file_path):
+            if os.path.getsize(file_path) > 0:
+                try:
+                    with Image.open(file_path) as img:
+                        img.verify()
+                    return True
+                except Exception:
+                    return False
+            return False
+
+        # Based on torchvision.datasets.folder.make_dataset
+        instances = []
+        for target_class in sorted(class_to_idx.keys()):
+            class_index = class_to_idx[target_class]
+            target_dir = os.path.join(directory, target_class)
+            if not os.path.isdir(target_dir):
+                continue
+            for root, _, fnames in sorted(os.walk(target_dir, followlinks=True)):
+                for fname in sorted(fnames):
+                    path = os.path.join(root, fname)
+                    if fname.lower().endswith(".png") and is_valid_png(path):
+                        item = (path, class_index)
+                        instances.append(item)
+
+        return instances
+
+
+
+
 class CustomImageFolderAllImages(datasets.ImageFolder): 
     def find_classes(self, directory):
         # List all directories in the given path
@@ -122,7 +256,6 @@ def create_dataloaders(
     # Create a transform for the training data    
     # Load the full dataset without any transforms
 
-
     unclassifiable_dataset = CustomImageFolder(unclassifiable_path)
 
     # if boost_dataset is not none
@@ -150,8 +283,6 @@ def create_dataloaders(
     else:
         full_dataset = CustomImageFolder(data_path)
         classes, class_to_idx = full_dataset.classes, full_dataset.class_to_idx
-        
-
 
     # Split the dataset into training and test sets
     train_indices, test_indices = train_test_split(list(range(len(full_dataset))), test_size=0.2, random_state=42)

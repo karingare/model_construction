@@ -10,7 +10,6 @@ import cv2
 from torchvision.transforms.functional import pad, affine
 from torchvision import transforms
 import numpy as np
-import numbers
 from PIL import Image
 
 def mode_pixel_value(img):

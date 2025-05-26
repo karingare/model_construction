@@ -16,13 +16,11 @@ import torch
 from torchvision import transforms, models
 from torch import nn
 from torchinfo import summary
-import torch.optim as optim
 import os
 from datetime import datetime
 import pandas as pd
 from pathlib import Path
 import argparse
-from torch.optim.lr_scheduler import MultiStepLR
 
 # scripts I wrote
 from supportive_code.data_setup import create_dataloaders
@@ -45,7 +43,6 @@ if __name__ == "__main__":
     parser.add_argument('--model_folder_name', type=str, help='Specify model name', default=None)
     parser.add_argument('--boost_dataset', type=str, help='Specify boost dataset', default=None)
 
-
     if parser.parse_args().data == "test":
         data_path = base_dir / "data" / "development"
         unclassifiable_path = base_dir / "data" / "development_unclassifiable"
@@ -58,9 +55,15 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "tangesund":
         data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_Image_Reference_Library_v4/smhi_ifcb_tangesund_annotated_images'
         unclassifiable_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesund_skagerrak_kattegat_merged":
+        data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_tangesund_and_skagerrak_v4'
+        unclassifiable_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesundplus":
         data_path = '/proj/common-datasets/SMHI-IFCB-Plankton/version-2/smhi_ifcb_tångesund_annotated_images'
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "amime":
+        data_path = "/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/AMIME_main_dataset"
+        unclassifiable_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/from_berzelius/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     else:
         data_path = parser.parse_args().data
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'

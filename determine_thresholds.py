@@ -6,22 +6,17 @@ Created on Mon Mar  6 15:35:56 2023
 @author: forskningskarin
 
 """
+
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import argparse
-from torchvision import models, transforms, datasets
+from torchvision import models, transforms
 import torch
 from supportive_code.data_setup import create_dataloaders
 from torch import nn
-from torchinfo import summary
-from supportive_code.prediction_setup import create_predict_dataloader, predict_to_csvs, find_best_thresholds
-from supportive_code.helper import show_model, create_confusion_matrix
-import ast
+from supportive_code.prediction_setup import find_best_thresholds
 from pathlib import Path
-import torch.nn.functional
 from supportive_code.padding import NewPad, NewPadAndTransform
-import numpy as np
-import tensorflow as tf
 
 if __name__ == "__main__":  
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -44,6 +39,12 @@ if __name__ == "__main__":
         unclassifiable_path = '/proj/berzelius-2023-48/ifcb/main_folder_karin/data/Unclassifiable from SYKE 2021'
     elif parser.parse_args().data == "tangesund":
         data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_Image_Reference_Library_v4/smhi_ifcb_tangesund_annotated_images'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesund_skagerrak_kattegat_merged":
+        data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_tangesund_and_skagerrak_v4'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "amime":
+        data_path = "/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/AMIME_main_dataset"
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     if parser.parse_args().model == "main":

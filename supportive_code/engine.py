@@ -11,10 +11,8 @@ import torch
 from tqdm.auto import tqdm
 from torch import nn
 import torch.optim as optim
-import numpy as np
 from sklearn.metrics import precision_recall_fscore_support
 from typing import List
-import pandas as pd
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

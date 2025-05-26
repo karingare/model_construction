@@ -5,21 +5,20 @@ Created on Mon Mar  6 15:57:31 2023
 
 @author: forskningskarin
 """
-from torchvision import transforms
 import os
 from torch.utils.data import DataLoader
 import torch
 import pandas as pd
-from pathlib import Path
-from sklearn.metrics import precision_recall_fscore_support, precision_recall_curve, f1_score
 import numpy as np
-import torch.nn.functional as F
-import tensorflow as tf
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
-
+from torch.utils.data import ConcatDataset
 import shutil
-import random
+import pandas as pd
+import torch
+from tqdm import tqdm
+import os
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -142,20 +141,23 @@ def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
             predicted = predicted.cpu().numpy()
             predictions.extend(predicted)
 
-    # 2. Import dictionary 
-    #dict = pd.read_excel('supportive_files/dictionary.xlsx') # get dictionary which can translate image classes to tax classes
-    #assigned_classes = dict['assigned_class'].tolist()
-    #tax_classes = dict['taxonomic_class'].tolist()
-    
-    #dictionary = {assigned_classes[i]:tax_classes[i] for i in range(len(assigned_classes))}
+    # Handle both normal ImageFolder and ConcatDataset
+    if isinstance(dataset, ConcatDataset):
+        all_imgs = []
+        for ds in dataset.datasets:
+            if hasattr(ds, 'imgs'):
+                all_imgs.extend(ds.imgs)
+            else:
+                raise ValueError("One of the datasets in ConcatDataset has no .imgs attribute")
+    else:
+        all_imgs = dataset.imgs
 
-    # 3. Make dataframe of predictions per each image id
-    image_names = [path[0].split('/')[-1] for path in dataset.imgs]
-    bin_names = [path[0].split('/')[-2] for path in dataset.imgs]
+    image_names = [os.path.basename(path[0]) for path in all_imgs]
+    bin_names = [os.path.basename(os.path.dirname(path[0])) for path in all_imgs]
+
     df_of_predictions = pd.DataFrame({'bin_name': bin_names, 'image_name': image_names, 'predicted_class': predictions})
     df_of_predictions.replace(-1, "Unclassified", inplace=True)
     df_of_predictions =df_of_predictions.replace({"predicted_class": idx_to_class})
-    #df_of_predictions['taxonomic_class'] = df_of_predictions['predicted_class'].apply(lambda x: dictionary.get(x, 'Unclassified')) #flag
     
     # 4. Group the predictions by bin_name to get the table image_class_table
     counts_per_bin = df_of_predictions.groupby('bin_name')['predicted_class'].value_counts()
@@ -170,6 +172,99 @@ def predict_to_csvs(model, data_loader, dataset, idx_to_class, thresholds_path):
     image_class_table.loc[image_class_table['predicted_class'] == 'Unclassified', 'relative_abundance_without_unclassifiable'] = 0
 
     return df_of_predictions, image_class_table
+
+
+import pandas as pd
+import torch
+from tqdm import tqdm
+import os
+import time
+
+def predict_to_csvs_streaming(
+    model,
+    data_loader,
+    dataset,
+    idx_to_class,
+    thresholds_path,
+    output_path,
+    resume=True,
+    save_every_n_batches=10,
+    resume_from_paths=None  # 🆕 list of CSVs to resume from
+):
+    threshold_df = pd.read_csv(thresholds_path, index_col=0)
+    predictions = []
+    already_predicted_paths = set()
+
+    # 🧠 Load predictions from multiple past CSVs
+    if resume_from_paths:
+        for path in resume_from_paths:
+            if os.path.exists(path):
+                print(f"🔁 Loading previously predicted paths from: {path}")
+                df_prev = pd.read_csv(path)
+                already_predicted_paths.update(df_prev['image_path'].tolist())
+
+    # 🧠 Also include current file if resuming from current folder
+    prediction_file = os.path.join(output_path, 'streaming_predictions.csv')
+    if resume and os.path.exists(prediction_file):
+        df_existing = pd.read_csv(prediction_file)
+        already_predicted_paths.update(df_existing['image_path'].tolist())
+        predictions.extend(df_existing.to_dict('records'))
+
+    batch_counter = 0
+    
+    for batch_idx, (images, paths) in enumerate(tqdm(data_loader, desc="Streaming prediction")):
+        if not paths:
+            print(f"⚠️ Skipping empty batch {batch_idx}")
+            continue
+
+        bin_name = os.path.basename(os.path.dirname(paths[0]))
+        print(f"📦 Processing: {bin_name} (batch {batch_idx + 1}, {len(paths)} images)")
+        
+        batch_start = time.time()
+
+        # Inference
+        t0 = time.time()
+        images = images.to(next(model.parameters()).device)
+        with torch.no_grad():
+            outputs = model(images)
+            probs = torch.softmax(outputs * torch.log(torch.tensor(1.3)), dim=1)
+            predicted = torch.argmax(probs, dim=1)
+            predicted_prob = torch.max(probs, dim=1).values.cpu().numpy()
+        t1 = time.time()
+
+        # Post-processing
+        for i in range(len(paths)):
+            path = paths[i]
+            if path in already_predicted_paths:
+                continue
+            class_idx = predicted[i].item()
+            class_name = idx_to_class[class_idx]
+            threshold = threshold_df.loc[class_name, 'Threshold']
+            if predicted_prob[i] < threshold:
+                class_name = "Unclassified"
+            bin_name = os.path.basename(os.path.dirname(path))
+            image_name = os.path.basename(path)
+
+            pred_entry = {
+                'bin_name': bin_name,
+                'image_name': image_name,
+                'image_path': path,
+                'predicted_class': class_name
+            }
+            predictions.append(pred_entry)
+
+        batch_counter += 1
+        if batch_counter % save_every_n_batches == 0:
+            pd.DataFrame(predictions).to_csv(prediction_file, index=False)
+
+        t2 = time.time()
+        # print(f"🧠 Inference: {t1 - t0:.2f}s | 🛠️ Post-processing: {t2 - t1:.2f}s | Total batch: {time.time() - batch_start:.2f}s")
+
+    # Final save
+    pd.DataFrame(predictions).to_csv(prediction_file, index=False)
+    print("✅ Final predictions written.")
+
+    return pd.DataFrame(predictions)
 
 
 

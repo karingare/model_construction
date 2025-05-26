@@ -13,11 +13,13 @@ import torch
 from torch import nn
 from pathlib import Path
 import argparse
-from supportive_code.prediction_setup import create_predict_dataloader, evaluate_on_test
 import ast
 import pandas as pd
+
+
 from supportive_code.padding import NewPad
 from supportive_code.data_setup import create_dataloaders
+from supportive_code.prediction_setup import create_predict_dataloader, evaluate_on_test
 
 if __name__ == "__main__":  
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -29,6 +31,8 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, help='Specify model (name of model of main)', default='test')
     parser.add_argument('--testtype', type=str, help='Specify the type of test data to use (fraction of full set or separate set)', default='fraction')
     parser.add_argument('--data', type=str, help='Specify any specific dataset to use', default='development')
+    
+    
     if parser.parse_args().model == "main":
         model_path = base_dir / 'data' / 'models' /'model_main_240116' 
     elif parser.parse_args().model == "development":
@@ -50,6 +54,12 @@ if __name__ == "__main__":
     elif parser.parse_args().data == "tangesund":
         data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_Image_Reference_Library_v4/smhi_ifcb_tangesund_annotated_images'
         unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "tangesund_skagerrak_kattegat_merged":
+        data_path = '/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/SMHI_IFCB_Plankton_tangesund_and_skagerrak_v4'
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
+    elif parser.parse_args().data == "amime":
+        data_path = "/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/AMIME_main_dataset"
+        unclassifiable_path = base_dir / 'data' / 'Unclassifiable from SYKE 2021'
 
     path_to_model = model_path / 'model.pth'
 
@@ -67,7 +77,7 @@ if __name__ == "__main__":
                 pass
             training_info[key] = value
 
-    # Example: Access the padding_mode
+    # Access the padding_mode
     padding_mode = training_info.get('padding_mode')
 
     # set batch size for the dataloader
@@ -103,7 +113,7 @@ if __name__ == "__main__":
             ])
 
     # create dataset and dataloader for the data to be predicted on
-    dataset = datasets.ImageFolder(root=data_path, transform=transform)
+    dataset = datasets.ImageFolder(root=data_path, transform=transform, allow_empty=True)
 
     if parser.parse_args().testtype == "fraction":
         _, _, _, test_dataloader, test_with_unclassifiable_dataloader, class_names, class_to_idx = create_dataloaders( 
