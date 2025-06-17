@@ -211,15 +211,21 @@ def predict_to_csvs_streaming(
         predictions.extend(df_existing.to_dict('records'))
 
     batch_counter = 0
+    last_bin_name = None
+
+    from itertools import count
+
+    for batch_idx, (images, paths) in zip(count(), tqdm(data_loader, desc="Streaming prediction", total=None)):
     
-    for batch_idx, (images, paths) in enumerate(tqdm(data_loader, desc="Streaming prediction")):
         if not paths:
             print(f"⚠️ Skipping empty batch {batch_idx}")
             continue
 
         bin_name = os.path.basename(os.path.dirname(paths[0]))
-        print(f"📦 Processing: {bin_name} (batch {batch_idx + 1}, {len(paths)} images)")
-        
+        if bin_name != last_bin_name:
+            tqdm.write(f"📦 Processing: {bin_name}")
+            last_bin_name = bin_name
+
         batch_start = time.time()
 
         # Inference
@@ -246,9 +252,7 @@ def predict_to_csvs_streaming(
             image_name = os.path.basename(path)
 
             pred_entry = {
-                'bin_name': bin_name,
                 'image_name': image_name,
-                'image_path': path,
                 'predicted_class': class_name
             }
             predictions.append(pred_entry)

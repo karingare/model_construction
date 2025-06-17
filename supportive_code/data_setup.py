@@ -12,6 +12,8 @@ import os
 from torch.utils.data import ConcatDataset
 from sklearn.model_selection import train_test_split
 import io
+import glob
+from functools import partial
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, IterableDataset
 from torch.utils.data import Subset
@@ -130,38 +132,39 @@ class ImagePathDataset(Dataset):
 
 
 
-
-
-# a test for prediction 
+ 
 class ImageWebDataset(IterableDataset):
     def __init__(self, image_path, transform=None):
         self.image_path = image_path
         self.transform = transform
-        self.datapipe1 = FileLister(image_path, "*.tar")
+        tar_files = glob.glob(os.path.join(image_path, "**", "*.tar"), recursive=True)
+        if not tar_files:
+            raise FileNotFoundError(f"No .tar files found under {image_path}")
+        self.datapipe1 = iter(tar_files)
         self.datapipe2 = FileOpener(self.datapipe1, mode="b")
-        self.num_items_estimate = 10000  # arbitrary fallback
 
-    def __len__(self):
-        return self.num_items_estimate
             
     def __iter__(self):
-        def decode(item):
-            key, value = item
-            if not key.endswith(".png"):
-                return None
-            try:
-                img_bytes = value.read()
-                img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                if self.transform:
-                    img = self.transform(img)
-                return img, key
-            except Exception as e:
-                print(f"⚠️ Failed to decode {key}: {e}")
-                return None
+        dataset = self.datapipe2.load_from_tar().map(partial(decode, transform=self.transform)).filter(lambda x: x is not None)
 
-        dataset = self.datapipe2.load_from_tar().map(decode).filter(lambda x: x is not None)
         for obj in dataset:
             yield obj
+
+def decode(item, transform=None):
+    key, value = item
+    if not key.endswith(".png"):
+        return None
+    try:
+        img_bytes = value.read()
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        if transform:
+            img = transform(img)
+        return img, key
+    except Exception as e:
+        print(f"⚠️ Failed to decode {key}: {e}")
+        return None
+
+    
 
 class CustomImageFolderOptimized(datasets.ImageFolder):
     def find_classes(self, directory):
