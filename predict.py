@@ -58,8 +58,8 @@ if __name__ == "__main__":
     
     # set up argument parser
     parser = argparse.ArgumentParser(description='My script description')
-    parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='march2023')
-    parser.add_argument('--model', type=str, help='Specify model (main or a name)', default='development')
+    parser.add_argument('--data', type=str, help='Specify data selection (for example test or all)', default='test')
+    parser.add_argument('--model', type=str, help='Specify model (main or a name)', default='test')
     parser.add_argument('--start_date', type=str, help='Start date in YYYYMMDD format', default=None)
     parser.add_argument('--end_date', type=str, help='End date in YYYYMMDD format', default=None)
     args = parser.parse_args()
@@ -75,6 +75,8 @@ if __name__ == "__main__":
         data_path = base_dir / 'data' / 'SMHI_Tangesund_annotated_images'
     elif args.data == "amime":
         data_path = "/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/manually_classified_ifcb_sets/AMIME_main_dataset"
+    elif args.data == "test":
+        data_path = "/cfs/klemming/projects/supr/snic2020-6-126/projects/amime/ifcb_data/testing_data_tar/2024"
     else:
         data_path = args.data
 
@@ -89,6 +91,9 @@ if __name__ == "__main__":
         path_to_model = model_path / 'model.pth'
     elif args.model == "syke2022":
         model_path = base_dir / 'data' / 'models' / 'syke2022_20240227'
+        path_to_model = model_path / 'model.pth'
+    elif args.model == "test":
+        model_path = base_dir / 'data' / 'models' / 'amime_test_20250407'
         path_to_model = model_path / 'model.pth'
     else:
         model_path = base_dir / 'data' / 'models' / args.model
