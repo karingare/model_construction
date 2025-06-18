@@ -131,22 +131,43 @@ class ImagePathDataset(Dataset):
             return None  # Will be filtered out by custom collate_fn
 
 
+import tarfile
 
+def is_valid_tar(filepath):
+    try:
+        with tarfile.open(filepath, 'r') as tar:
+            tar.getmembers()
+        return True
+    except tarfile.TarError:
+        return False
  
 class ImageWebDataset(IterableDataset):
-    def __init__(self, image_path, transform=None):
-        self.image_path = image_path
+    def __init__(self, paths, transform=None):
+        # Normalize input to list of paths
+        if isinstance(paths, str):
+            paths = [paths]
+        self.paths = paths
         self.transform = transform
-        tar_files = glob.glob(os.path.join(image_path, "**", "*.tar"), recursive=True)
+
+        # Recursively find all .tar files in the supplied paths
+        tar_files = []
+        for path in self.paths:
+            if os.path.isdir(path):
+                found = glob.glob(os.path.join(path, "**", "*.tar"), recursive=True)
+                tar_files.extend(found)
+            else:
+                print(f"⚠️ Skipping non-directory: {path}")
+        
         if not tar_files:
-            raise FileNotFoundError(f"No .tar files found under {image_path}")
+            raise FileNotFoundError(f"No .tar files found in: {self.paths}")
+
+        tar_files = [f for f in tar_files if is_valid_tar(f)]
+
         self.datapipe1 = iter(tar_files)
         self.datapipe2 = FileOpener(self.datapipe1, mode="b")
 
-            
     def __iter__(self):
         dataset = self.datapipe2.load_from_tar().map(partial(decode, transform=self.transform)).filter(lambda x: x is not None)
-
         for obj in dataset:
             yield obj
 

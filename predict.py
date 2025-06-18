@@ -170,6 +170,12 @@ if __name__ == "__main__":
     dataloader_start = time.time()
     log_time(dataloader_start, "Creating dataset")
 
+    if args.start_date or args.end_date:
+        start_date = args.start_date if args.start_date else None
+        end_date = args.end_date if args.end_date else None
+        folders = get_folders_in_range(data_path, start_date, end_date)
+        data_path = [Path(folder) for folder in folders]
+
     dataset = ImageWebDataset(data_path, transform=transform)
 
     def safe_collate(batch):
